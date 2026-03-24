@@ -7,7 +7,7 @@ import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import { GenerationService } from '../services/generation/GenerationService.js';
 import type { Request } from 'express';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 const generationService = new GenerationService();
 
 // POST /api/generations  { analysisId, useImprovedVersion? }
@@ -71,7 +71,7 @@ router.get('/:id', requireAuth, async (req: Request, res) => {
   const { teamId } = req as AuthenticatedRequest;
 
   const generation = await db.query.generations.findFirst({
-    where: and(eq(generations.id, req.params['id']!), eq(generations.teamId, teamId)),
+    where: and(eq(generations.id, req.params['id'] as string), eq(generations.teamId, teamId)),
   });
 
   if (!generation) {
@@ -92,7 +92,7 @@ router.get('/:id/download', requireAuth, async (req: Request, res) => {
   const { teamId } = req as AuthenticatedRequest;
 
   const generation = await db.query.generations.findFirst({
-    where: and(eq(generations.id, req.params['id']!), eq(generations.teamId, teamId)),
+    where: and(eq(generations.id, req.params['id'] as string), eq(generations.teamId, teamId)),
   });
 
   if (!generation) {

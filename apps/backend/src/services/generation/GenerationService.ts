@@ -110,8 +110,8 @@ export class GenerationService {
         provider: llmConfig.provider as 'openai' | 'azure_openai' | 'anthropic',
         model: llmConfig.model,
         apiKey: decrypt(llmConfig.encryptedApiKey),
-        azureEndpoint: llmConfig.azureEndpoint ?? undefined,
-        azureDeployment: llmConfig.azureDeployment ?? undefined,
+        ...(llmConfig.azureEndpoint ? { azureEndpoint: llmConfig.azureEndpoint } : {}),
+        ...(llmConfig.azureDeployment ? { azureDeployment: llmConfig.azureDeployment } : {}),
       });
 
       const response = await client.complete(

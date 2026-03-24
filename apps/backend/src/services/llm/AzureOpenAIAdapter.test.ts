@@ -38,14 +38,18 @@ describe('AzureOpenAIAdapter', () => {
   });
 
   it('throws if azureEndpoint is missing', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { azureEndpoint: _omit, ...configWithoutEndpoint } = config;
     expect(
-      () => new AzureOpenAIAdapter({ ...config, azureEndpoint: undefined }),
+      () => new AzureOpenAIAdapter(configWithoutEndpoint),
     ).toThrow('azureEndpoint');
   });
 
   it('throws if azureDeployment is missing', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { azureDeployment: _omit, ...configWithoutDeployment } = config;
     expect(
-      () => new AzureOpenAIAdapter({ ...config, azureDeployment: undefined }),
+      () => new AzureOpenAIAdapter(configWithoutDeployment),
     ).toThrow('azureDeployment');
   });
 

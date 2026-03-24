@@ -6,10 +6,10 @@ import { teams } from '../db/schema.js';
 import { requireAuth, requireAdmin, type AuthenticatedRequest } from '../middleware/auth.js';
 import type { Request } from 'express';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 const stripe = new Stripe(process.env['STRIPE_SECRET_KEY']!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-02-24.acacia',
 });
 
 // Prix Stripe (à configurer dans le dashboard Stripe, puis mettre les IDs ici)
@@ -36,8 +36,7 @@ router.post('/checkout', requireAuth, requireAdmin, async (req: Request, res) =>
     mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [{ price: priceId, quantity: 1 }],
-    customer: team.stripeCustomerId ?? undefined,
-    customer_email: team.stripeCustomerId ? undefined : undefined, // rempli après login
+    ...(team.stripeCustomerId ? { customer: team.stripeCustomerId } : {}),
     metadata: { teamId },
     success_url: `${process.env['FRONTEND_URL']}/settings/billing?success=1`,
     cancel_url: `${process.env['FRONTEND_URL']}/settings/billing?cancelled=1`,

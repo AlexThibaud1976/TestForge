@@ -151,6 +151,7 @@ export class ADOConnector {
           ),
           labels,
           status: item.fields['System.State'] ?? '',
+          fetchedAt: new Date().toISOString(),
         });
       }
     }

@@ -9,7 +9,7 @@ import { JiraConnector } from '../services/connectors/JiraConnector.js';
 import { ADOConnector } from '../services/connectors/ADOConnector.js';
 import type { Request } from 'express';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 const jiraSchema = z.object({
   type: z.literal('jira'),
@@ -97,7 +97,7 @@ router.post('/:id/test', requireAuth, requireAdmin, async (req: Request, res) =>
   const { teamId } = req as AuthenticatedRequest;
   const connection = await db.query.sourceConnections.findFirst({
     where: and(
-      eq(sourceConnections.id, req.params['id']!),
+      eq(sourceConnections.id, req.params['id'] as string),
       eq(sourceConnections.teamId, teamId),
     ),
   });
@@ -143,7 +143,7 @@ router.delete('/:id', requireAuth, requireAdmin, async (req: Request, res) => {
     .delete(sourceConnections)
     .where(
       and(
-        eq(sourceConnections.id, req.params['id']!),
+        eq(sourceConnections.id, req.params['id'] as string),
         eq(sourceConnections.teamId, teamId),
       ),
     )

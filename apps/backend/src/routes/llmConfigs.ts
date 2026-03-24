@@ -8,7 +8,7 @@ import { encrypt, decrypt } from '../utils/encryption.js';
 import { createLLMClient } from '../services/llm/index.js';
 import type { Request } from 'express';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 const createSchema = z.discriminatedUnion('provider', [
   z.object({
@@ -94,7 +94,7 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res) => {
 router.post('/:id/test', requireAuth, requireAdmin, async (req: Request, res) => {
   const { teamId } = req as AuthenticatedRequest;
   const config = await db.query.llmConfigs.findFirst({
-    where: and(eq(llmConfigs.id, req.params['id']!), eq(llmConfigs.teamId, teamId)),
+    where: and(eq(llmConfigs.id, req.params['id'] as string), eq(llmConfigs.teamId, teamId)),
   });
 
   if (!config) {
@@ -107,8 +107,8 @@ router.post('/:id/test', requireAuth, requireAdmin, async (req: Request, res) =>
       provider: config.provider as 'openai' | 'azure_openai' | 'anthropic',
       model: config.model,
       apiKey: decrypt(config.encryptedApiKey),
-      azureEndpoint: config.azureEndpoint ?? undefined,
-      azureDeployment: config.azureDeployment ?? undefined,
+      ...(config.azureEndpoint ? { azureEndpoint: config.azureEndpoint } : {}),
+      ...(config.azureDeployment ? { azureDeployment: config.azureDeployment } : {}),
     });
 
     await client.complete([{ role: 'user', content: 'Reply with just the word OK.' }], {
@@ -156,7 +156,7 @@ router.patch('/:id', requireAuth, requireAdmin, async (req: Request, res) => {
   const [updated] = await db
     .update(llmConfigs)
     .set(updates)
-    .where(and(eq(llmConfigs.id, req.params['id']!), eq(llmConfigs.teamId, teamId)))
+    .where(and(eq(llmConfigs.id, req.params['id'] as string), eq(llmConfigs.teamId, teamId)))
     .returning();
 
   if (!updated) {
@@ -189,7 +189,7 @@ router.put('/:id/set-default', requireAuth, requireAdmin, async (req: Request, r
   const [updated] = await db
     .update(llmConfigs)
     .set({ isDefault: true })
-    .where(and(eq(llmConfigs.id, req.params['id']!), eq(llmConfigs.teamId, teamId)))
+    .where(and(eq(llmConfigs.id, req.params['id'] as string), eq(llmConfigs.teamId, teamId)))
     .returning({ id: llmConfigs.id });
 
   if (!updated) {
@@ -205,7 +205,7 @@ router.delete('/:id', requireAuth, requireAdmin, async (req: Request, res) => {
   const { teamId } = req as AuthenticatedRequest;
   await db
     .delete(llmConfigs)
-    .where(and(eq(llmConfigs.id, req.params['id']!), eq(llmConfigs.teamId, teamId)));
+    .where(and(eq(llmConfigs.id, req.params['id'] as string), eq(llmConfigs.teamId, teamId)));
   res.status(204).send();
 });
 

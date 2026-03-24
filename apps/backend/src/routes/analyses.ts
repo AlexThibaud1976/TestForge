@@ -7,7 +7,7 @@ import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import { AnalysisService } from '../services/analysis/AnalysisService.js';
 import type { Request } from 'express';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 const analysisService = new AnalysisService();
 
 // POST /api/analyses  { userStoryId }
@@ -35,7 +35,7 @@ router.get('/:id', requireAuth, async (req: Request, res) => {
   const { teamId } = req as AuthenticatedRequest;
   const analysis = await db.query.analyses.findFirst({
     where: and(
-      eq(analyses.id, req.params['id']!),
+      eq(analyses.id, req.params['id'] as string),
       eq(analyses.teamId, teamId),
     ),
   });

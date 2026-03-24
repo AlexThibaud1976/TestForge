@@ -8,7 +8,7 @@ import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import type { Request } from 'express';
 import crypto from 'crypto';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 const supabaseAdmin = createClient(
   process.env['SUPABASE_URL']!,
@@ -120,7 +120,6 @@ router.post('/invite/accept', async (req: Request, res) => {
     teamId: invitation.teamId,
     userId,
     role: invitation.role as 'admin' | 'member',
-    invitedBy: undefined,
   });
 
   // Marquer l'invitation comme acceptée
@@ -135,7 +134,7 @@ router.post('/invite/accept', async (req: Request, res) => {
 // GET /api/auth/invite/:token — vérifier une invitation (public)
 router.get('/invite/:token', async (req: Request, res) => {
   const invitation = await db.query.invitations.findFirst({
-    where: eq(invitations.token, req.params['token']!),
+    where: eq(invitations.token, req.params['token'] as string),
   });
 
   if (!invitation || invitation.acceptedAt || new Date() > invitation.expiresAt) {

@@ -9,7 +9,7 @@ import { JiraConnector } from '../services/connectors/JiraConnector.js';
 import { ADOConnector } from '../services/connectors/ADOConnector.js';
 import type { Request } from 'express';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 // GET /api/user-stories?page=1&pageSize=20&search=...&status=...&connectionId=...
 router.get('/', requireAuth, async (req: Request, res) => {
@@ -35,7 +35,7 @@ router.get('/', requireAuth, async (req: Request, res) => {
 
   const where = and(...conditions);
 
-  const [rows, [{ count }]] = await Promise.all([
+  const [rows, countResult] = await Promise.all([
     db
       .select()
       .from(userStories)
@@ -49,7 +49,7 @@ router.get('/', requireAuth, async (req: Request, res) => {
       .where(where),
   ]);
 
-  res.json({ data: rows, total: count, page, pageSize });
+  res.json({ data: rows, total: countResult[0]?.count ?? 0, page, pageSize });
 });
 
 // GET /api/user-stories/:id
@@ -57,7 +57,7 @@ router.get('/:id', requireAuth, async (req: Request, res) => {
   const { teamId } = req as AuthenticatedRequest;
   const story = await db.query.userStories.findFirst({
     where: and(
-      eq(userStories.id, req.params['id']!),
+      eq(userStories.id, req.params['id'] as string),
       eq(userStories.teamId, teamId),
     ),
   });
@@ -96,7 +96,7 @@ router.post('/sync', requireAuth, async (req: Request, res) => {
 
   const credentials = JSON.parse(decrypt(connection.encryptedCredentials)) as Record<string, string>;
 
-  let fetched: Omit<(typeof userStories.$inferInsert), 'id'>[] = [];
+  let fetchedRaw: Awaited<ReturnType<JiraConnector['fetchUserStories']>> = [];
 
   if (connection.type === 'jira') {
     const connector = new JiraConnector({
@@ -105,15 +105,20 @@ router.post('/sync', requireAuth, async (req: Request, res) => {
       apiToken: credentials['apiToken']!,
       projectKey: connection.projectKey,
     });
-    fetched = await connector.fetchUserStories(teamId, connection.id);
+    fetchedRaw = await connector.fetchUserStories(teamId, connection.id);
   } else {
     const connector = new ADOConnector({
       organizationUrl: connection.baseUrl,
       project: connection.projectKey,
       pat: credentials['pat']!,
     });
-    fetched = await connector.fetchUserStories(teamId, connection.id);
+    fetchedRaw = await connector.fetchUserStories(teamId, connection.id);
   }
+
+  const fetched: Omit<(typeof userStories.$inferInsert), 'id'>[] = fetchedRaw.map((f) => ({
+    ...f,
+    fetchedAt: new Date(f.fetchedAt),
+  }));
 
   // Upsert : insérer ou mettre à jour si l'externalId existe déjà
   if (fetched.length > 0) {

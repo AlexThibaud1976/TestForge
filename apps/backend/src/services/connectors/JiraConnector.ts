@@ -107,6 +107,7 @@ export class JiraConnector {
           acceptanceCriteria: null, // Jira Cloud stocke les AC dans la description ou un custom field
           labels: issue.fields.labels ?? [],
           status: issue.fields.status?.name ?? '',
+          fetchedAt: new Date().toISOString(),
         });
       }
 

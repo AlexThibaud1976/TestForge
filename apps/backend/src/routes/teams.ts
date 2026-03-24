@@ -8,7 +8,7 @@ import { requireAuth, requireAdmin, type AuthenticatedRequest } from '../middlew
 import type { Request } from 'express';
 import crypto from 'crypto';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 const supabaseAdmin = createClient(
   process.env['SUPABASE_URL']!,
@@ -136,7 +136,7 @@ router.delete('/me/members/:userId', requireAuth, requireAdmin, async (req: Requ
 
   await db
     .delete(teamMembers)
-    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, req.params['userId']!)));
+    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, req.params['userId'] as string)));
 
   res.status(204).send();
 });
