@@ -1,11 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 
-type RowStatus = 'pending' | 'success' | 'error';
-
 interface RealtimeRow {
   id: string;
-  status: RowStatus;
+  status: string;
   [key: string]: unknown;
 }
 
