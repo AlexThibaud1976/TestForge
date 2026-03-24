@@ -281,8 +281,8 @@ Le différenciateur central : **la qualité du code généré**, pas juste la vi
 **En tant que** Thomas, **je veux** souscrire à un plan payant **afin de** continuer à utiliser TestForge après la période de trial.
 
 **Critères d'acceptation :**
-- [ ] Plan Starter : 49€/mois — jusqu'à 5 membres, OpenAI uniquement
-- [ ] Plan Pro : 99€/mois — membres illimités, tous providers LLM, historique 90j
+- [ ] Plan Starter : 49€/mois — jusqu'à 5 membres, OpenAI uniquement, historique 30 jours
+- [ ] Plan Pro : 99€/mois — membres illimités, tous providers LLM, historique 90 jours
 - [ ] Paiement par carte via Stripe Checkout
 - [ ] Factures accessibles dans l'interface
 - [ ] Downgrade / résiliation possible à tout moment

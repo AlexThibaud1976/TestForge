@@ -257,7 +257,7 @@ export class LoginPage {
               <ul className="space-y-2 text-sm text-gray-600">
                 <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Toutes les fonctionnalités</li>
                 <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Tous les providers LLM</li>
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Jusqu'à 3 membres</li>
+                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Membres illimités</li>
               </ul>
             </div>
 
@@ -271,7 +271,7 @@ export class LoginPage {
               <ul className="space-y-2 text-sm text-gray-600">
                 <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>OpenAI (GPT-4o)</li>
                 <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Jira + Azure DevOps</li>
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Historique illimité</li>
+                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Historique 30 jours</li>
               </ul>
             </div>
 
@@ -288,6 +288,7 @@ export class LoginPage {
               <ul className="space-y-2 text-sm text-blue-100">
                 <li className="flex items-start gap-2"><span className="text-cyan-300 mt-0.5">✓</span>Tous les providers LLM</li>
                 <li className="flex items-start gap-2"><span className="text-cyan-300 mt-0.5">✓</span>Azure OpenAI (tenant privé)</li>
+                <li className="flex items-start gap-2"><span className="text-cyan-300 mt-0.5">✓</span>Historique 90 jours</li>
                 <li className="flex items-start gap-2"><span className="text-cyan-300 mt-0.5">✓</span>Support prioritaire</li>
               </ul>
             </div>

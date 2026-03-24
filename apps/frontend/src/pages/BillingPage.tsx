@@ -13,7 +13,7 @@ const PLANS = [
     features: [
       'Jusqu\'à 5 membres',
       'Provider OpenAI uniquement',
-      'Historique illimité',
+      'Historique 30 jours',
       'Jira + Azure DevOps',
       'Support email',
     ],
