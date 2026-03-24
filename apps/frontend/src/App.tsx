@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth.js';
 import { AppLayout } from './components/layout/AppLayout.js';
+import { LandingPage } from './pages/LandingPage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 import { InvitePage } from './pages/InvitePage.js';
@@ -43,10 +44,13 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Landing page publique */}
+      <Route path="/" element={session ? <Navigate to="/stories" replace /> : <LandingPage />} />
       <Route path="/login" element={session ? <Navigate to="/stories" replace /> : <LoginPage />} />
       <Route path="/register" element={session ? <Navigate to="/stories" replace /> : <RegisterPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
-      <Route path="*" element={session ? <ProtectedRoutes /> : <Navigate to="/login" replace />} />
+      {/* Routes protégées — redirige vers la landing si pas connecté */}
+      <Route path="*" element={session ? <ProtectedRoutes /> : <Navigate to="/" replace />} />
     </Routes>
   );
 }
