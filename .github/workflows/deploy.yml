@@ -1,0 +1,69 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend → Railway
+    runs-on: ubuntu-latest
+    needs: [] # La CI tourne en parallèle sur push main — Railway déploie via son intégration GitHub native
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build backend
+        run: |
+          pnpm --filter @testforge/shared-types build
+          pnpm --filter @testforge/backend build
+
+      # Railway déploie automatiquement via son intégration GitHub.
+      # Ce job sert de vérification de build avant le déploiement Railway.
+      - name: Verify build output
+        run: test -f apps/backend/dist/index.js
+
+  deploy-frontend:
+    name: Deploy Frontend → Vercel
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: |
+          pnpm --filter @testforge/shared-types build
+          pnpm --filter @testforge/frontend build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      # Vercel déploie automatiquement via son intégration GitHub.
+      # Ce job vérifie que le build est propre avant.
+      - name: Verify build output
+        run: test -d apps/frontend/dist
