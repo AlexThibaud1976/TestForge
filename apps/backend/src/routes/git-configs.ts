@@ -5,9 +5,7 @@ import { gitConfigs } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
-import { GitHubAdapter } from '../services/git/GitHubAdapter.js';
-import { GitLabAdapter } from '../services/git/GitLabAdapter.js';
-import { AzureReposAdapter } from '../services/git/AzureReposAdapter.js';
+// Adapters chargés dynamiquement (évite les problèmes d'import ESM/CJS au démarrage)
 import type { Request } from 'express';
 
 const router: ReturnType<typeof Router> = Router();
@@ -83,15 +81,24 @@ router.post('/:id/test', requireAuth, async (req: Request, res) => {
   if (!config) { res.status(404).json({ error: 'Git config not found' }); return; }
 
   const token = decrypt(config.encryptedToken);
-  let adapter;
-  switch (config.provider) {
-    case 'github': adapter = new GitHubAdapter(token, config.repoUrl); break;
-    case 'gitlab': adapter = new GitLabAdapter(token, config.repoUrl); break;
-    case 'azure_repos': adapter = new AzureReposAdapter(token, config.repoUrl); break;
-    default: res.status(400).json({ error: 'Unknown provider' }); return;
+  try {
+    let result;
+    if (config.provider === 'github') {
+      const { GitHubAdapter } = await import('../services/git/GitHubAdapter.js');
+      result = await new GitHubAdapter(token, config.repoUrl).testConnection();
+    } else if (config.provider === 'gitlab') {
+      const { GitLabAdapter } = await import('../services/git/GitLabAdapter.js');
+      result = await new GitLabAdapter(token, config.repoUrl).testConnection();
+    } else if (config.provider === 'azure_repos') {
+      const { AzureReposAdapter } = await import('../services/git/AzureReposAdapter.js');
+      result = await new AzureReposAdapter(token, config.repoUrl).testConnection();
+    } else {
+      res.status(400).json({ error: 'Unknown provider' }); return;
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : 'Connection test failed' });
   }
-  const result = await adapter.testConnection();
-  res.json(result);
 });
 
 // DELETE /api/git-configs/:id

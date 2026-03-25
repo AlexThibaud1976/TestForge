@@ -2,9 +2,7 @@ import { db } from '../../db/index.js';
 import { gitConfigs, gitPushes, generations, generatedFiles, userStories, analyses } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { decrypt } from '../../utils/encryption.js';
-import { GitHubAdapter } from './GitHubAdapter.js';
-import { GitLabAdapter } from './GitLabAdapter.js';
-import { AzureReposAdapter } from './AzureReposAdapter.js';
+// Adapters importés dynamiquement pour éviter les problèmes ESM/CJS avec azure-devops-node-api
 import type { GeneratedFile } from '../generation/GenerationService.js';
 
 export interface PushOptions {
@@ -72,7 +70,7 @@ export class GitPushService {
     const token = decrypt(config.encryptedToken);
 
     // Select adapter
-    const adapter = this.createAdapter(config.provider, token, config.repoUrl);
+    const adapter = await this.createAdapter(config.provider, token, config.repoUrl);
 
     // Insert pending push record
     const [pushRecord] = await db
@@ -135,14 +133,20 @@ export class GitPushService {
     return `testforge/US-${story.externalId}-${slugify(story.title)}`;
   }
 
-  private createAdapter(provider: string, token: string, repoUrl: string) {
+  private async createAdapter(provider: string, token: string, repoUrl: string) {
     switch (provider) {
-      case 'github':
+      case 'github': {
+        const { GitHubAdapter } = await import('./GitHubAdapter.js');
         return new GitHubAdapter(token, repoUrl);
-      case 'gitlab':
+      }
+      case 'gitlab': {
+        const { GitLabAdapter } = await import('./GitLabAdapter.js');
         return new GitLabAdapter(token, repoUrl);
-      case 'azure_repos':
+      }
+      case 'azure_repos': {
+        const { AzureReposAdapter } = await import('./AzureReposAdapter.js');
         return new AzureReposAdapter(token, repoUrl);
+      }
       default:
         throw new Error(`Unsupported Git provider: ${provider}`);
     }
