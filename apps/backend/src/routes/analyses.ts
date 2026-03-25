@@ -5,10 +5,12 @@ import { db } from '../db/index.js';
 import { analyses } from '../db/schema.js';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import { AnalysisService } from '../services/analysis/AnalysisService.js';
+import { BatchAnalysisService } from '../services/analysis/BatchAnalysisService.js';
 import type { Request } from 'express';
 
 const router: ReturnType<typeof Router> = Router();
 const analysisService = new AnalysisService();
+const batchAnalysisService = new BatchAnalysisService(analysisService);
 
 // POST /api/analyses  { userStoryId }
 router.post('/', requireAuth, async (req: Request, res) => {
@@ -67,6 +69,27 @@ router.get('/', requireAuth, async (req: Request, res) => {
   });
 
   res.json(analysis ?? null);
+});
+
+// POST /api/analyses/batch  { userStoryIds: string[] }
+router.post('/batch', requireAuth, async (req: Request, res) => {
+  const { teamId } = req as AuthenticatedRequest;
+  const parsed = z.object({
+    userStoryIds: z.array(z.string().uuid()).min(1).max(50),
+  }).safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const result = await batchAnalysisService.analyzeBatch(parsed.data.userStoryIds, teamId);
+    res.status(201).json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Batch analysis failed';
+    res.status(500).json({ error: message });
+  }
 });
 
 export default router;

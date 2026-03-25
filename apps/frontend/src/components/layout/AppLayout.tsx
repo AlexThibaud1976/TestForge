@@ -22,6 +22,8 @@ const navSections = [
       { to: '/settings/connections',   label: 'Connexions',     icon: '🔌' },
       { to: '/settings/llm',           label: 'LLM',            icon: '🤖' },
       { to: '/settings/git',           label: 'Git',            icon: '↑' },
+      { to: '/settings/analytics',    label: 'Analytics',      icon: '📊' },
+      { to: '/settings/pom-registry', label: 'Registre POM',   icon: '🗂' },
       { to: '/settings/pom-templates', label: 'Templates POM',  icon: '📄' },
       { to: '/settings/team',          label: 'Équipe',         icon: '👥' },
       { to: '/settings/billing',       label: 'Abonnement',     icon: '💳' },

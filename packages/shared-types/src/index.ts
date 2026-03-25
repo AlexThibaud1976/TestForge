@@ -106,6 +106,14 @@ export interface GeneratedFile {
   content: string;
 }
 
+export type ValidationStatus = 'skipped' | 'valid' | 'auto_corrected' | 'has_errors';
+
+export interface ValidationError {
+  filename: string;
+  line: number;
+  message: string;
+}
+
 export interface Generation {
   id: string;
   analysisId: string;
@@ -120,6 +128,10 @@ export interface Generation {
   status: GenerationStatus;
   errorMessage: string | null;
   durationMs: number;
+  // Feature 004: code validation
+  validationStatus: ValidationStatus | null;
+  validationErrors: ValidationError[];
+  correctionAttempts: number | null;
   createdAt: string;
 }
 

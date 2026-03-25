@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { SprintScoreboard, type AnalysisResultItem, type BatchStats } from '../components/SprintScoreboard.js';
 
 interface UserStory {
   id: string;
@@ -26,6 +27,11 @@ interface PaginatedResponse {
   pageSize: number;
 }
 
+interface BatchResult {
+  results: AnalysisResultItem[];
+  stats: BatchStats;
+}
+
 const PAGE_SIZE = 20;
 
 export function StoriesPage() {
@@ -39,6 +45,12 @@ export function StoriesPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
+
+  // Batch
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
 
   const fetchStories = useCallback(async () => {
     setLoading(true);
@@ -59,9 +71,7 @@ export function StoriesPage() {
     api.get<Connection[]>('/api/connections').then(setConnections).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    void fetchStories();
-  }, [fetchStories]);
+  useEffect(() => { void fetchStories(); }, [fetchStories]);
 
   const handleSync = async (connectionId: string) => {
     setSyncing(connectionId);
@@ -76,73 +86,125 @@ export function StoriesPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelected(selected.size === stories.length ? new Set() : new Set(stories.map((s) => s.id)));
+  };
+
+  const handleBatchAnalyze = async () => {
+    const ids = selected.size > 0 ? Array.from(selected) : stories.map((s) => s.id);
+    if (ids.length === 0) return;
+    setBatchRunning(true);
+    setBatchProgress({ done: 0, total: ids.length });
+    setBatchResult(null);
+    try {
+      const result = await api.post<BatchResult>('/api/analyses/batch', { userStoryIds: ids });
+      setBatchResult(result);
+      setBatchProgress({ done: result.stats.succeeded + result.stats.failed, total: ids.length });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Erreur lors du batch');
+    } finally {
+      setBatchRunning(false);
+    }
+  };
+
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">User Stories</h1>
           <p className="text-sm text-gray-500 mt-1">{total} story{total !== 1 ? 's' : ''}</p>
         </div>
-        {connections.length > 0 && (
-          <div className="flex gap-2">
-            {connections.map((conn) => (
-              <button
-                key={conn.id}
-                onClick={() => void handleSync(conn.id)}
-                disabled={syncing === conn.id}
-                className="px-3 py-2 text-sm font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-              >
-                {syncing === conn.id ? '↻ Sync...' : `↻ ${conn.name}`}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-2 flex-wrap">
+          {stories.length > 0 && (
+            <button
+              onClick={() => void handleBatchAnalyze()}
+              disabled={batchRunning}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {batchRunning ? (
+                <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" /> {batchProgress ? `${batchProgress.done}/${batchProgress.total}` : '...'}</>
+              ) : `📊 Analyser ${selected.size > 0 ? `la sélection (${selected.size})` : 'tout le sprint'}`}
+            </button>
+          )}
+          {connections.map((conn) => (
+            <button key={conn.id} onClick={() => void handleSync(conn.id)} disabled={syncing === conn.id}
+              className="px-3 py-2 text-sm font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+              {syncing === conn.id ? '↻ Sync...' : `↻ ${conn.name}`}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Filtres */}
-      <div className="flex gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="🔍 Rechercher..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      {/* Progress bar */}
+      {batchRunning && batchProgress && (
+        <div className="mb-4">
+          <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Analyse en cours...</span>
+            <span>{batchProgress.done}/{batchProgress.total}</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-indigo-500 rounded-full transition-all"
+              style={{ width: `${Math.round((batchProgress.done / batchProgress.total) * 100)}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Scoreboard */}
+      {batchResult && !batchRunning && (
+        <SprintScoreboard
+          results={batchResult.results}
+          stats={batchResult.stats}
+          stories={stories.map((s) => ({ id: s.id, externalId: s.externalId, title: s.title }))}
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
+      )}
+
+      {/* Filtres */}
+      <div className="flex gap-3 mb-3">
+        <input type="text" placeholder="🔍 Rechercher..." value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">Tous statuts</option>
-          <option value="To Do">To Do</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Done">Done</option>
-          <option value="Active">Active</option>
-          <option value="New">New</option>
-          <option value="Resolved">Resolved</option>
+          {['To Do', 'In Progress', 'Done', 'Active', 'New', 'Resolved'].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         {connections.length > 1 && (
-          <select
-            value={connectionFilter}
-            onChange={(e) => { setConnectionFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          <select value={connectionFilter} onChange={(e) => { setConnectionFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Toutes connexions</option>
-            {connections.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
+            {connections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
       </div>
 
+      {/* Select all */}
+      {stories.length > 0 && !loading && (
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <input type="checkbox" id="select-all"
+            checked={selected.size === stories.length && stories.length > 0}
+            onChange={toggleSelectAll}
+            className="rounded text-indigo-600" />
+          <label htmlFor="select-all" className="text-xs text-gray-500 cursor-pointer select-none">
+            {selected.size === 0 ? 'Tout sélectionner' : `${selected.size} sélectionnée${selected.size > 1 ? 's' : ''}`}
+          </label>
+        </div>
+      )}
+
       {/* Liste */}
       {loading ? (
         <div className="space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-          ))}
+          {[...Array(5)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />)}
         </div>
       ) : stories.length === 0 ? (
         <div className="text-center py-16">
@@ -150,27 +212,19 @@ export function StoriesPage() {
           {connections.length === 0 ? (
             <>
               <p className="text-sm font-medium text-gray-700 mb-1">Aucune connexion configurée</p>
-              <p className="text-sm text-gray-400 mb-4">Connectez Jira ou Azure DevOps pour importer vos user stories.</p>
-              <a href="/settings/connections" className="inline-block px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-                Ajouter une connexion →
-              </a>
+              <a href="/settings/connections" className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md">Ajouter une connexion →</a>
             </>
           ) : (
-            <>
-              <p className="text-sm font-medium text-gray-700 mb-1">Aucune user story importée</p>
-              <p className="text-sm text-gray-400 mb-4">Lancez une synchronisation depuis votre Jira ou Azure DevOps.</p>
-              <p className="text-xs text-gray-300">Utilisez le bouton ↻ en haut à droite pour synchroniser</p>
-            </>
+            <p className="text-sm font-medium text-gray-700">Aucune user story — lancez une synchronisation</p>
           )}
         </div>
       ) : (
         <div className="space-y-2">
           {stories.map((story) => (
-            <UserStoryCard
-              key={story.id}
-              story={story}
-              onClick={() => void navigate(`/stories/${story.id}`)}
-            />
+            <UserStoryCard key={story.id} story={story}
+              selected={selected.has(story.id)}
+              onSelect={() => toggleSelect(story.id)}
+              onClick={() => void navigate(`/stories/${story.id}`)} />
           ))}
         </div>
       )}
@@ -178,74 +232,53 @@ export function StoriesPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50"
-          >
-            ← Précédent
-          </button>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50">← Précédent</button>
           <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50"
-          >
-            Suivant →
-          </button>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50">Suivant →</button>
         </div>
       )}
     </div>
   );
 }
 
-// ─── UserStoryCard ─────────────────────────────────────────────────────────────
-
-function UserStoryCard({ story, onClick }: { story: UserStory; onClick: () => void }) {
+function UserStoryCard({ story, selected, onSelect, onClick }: {
+  story: UserStory; selected: boolean; onSelect: () => void; onClick: () => void;
+}) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full bg-white border border-gray-200 rounded-lg p-4 text-left hover:border-blue-300 hover:shadow-sm transition-all group"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono text-gray-400">{story.externalId}</span>
-            <StatusBadge status={story.status} />
-          </div>
-          <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">
-            {story.title}
-          </p>
-          {story.description && (
-            <p className="text-xs text-gray-400 mt-1 truncate">{story.description}</p>
-          )}
-          {story.labels.length > 0 && (
-            <div className="flex gap-1 mt-2 flex-wrap">
-              {story.labels.slice(0, 4).map((label) => (
-                <span key={label} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
-                  {label}
-                </span>
-              ))}
-            </div>
-          )}
+    <div className={`bg-white border rounded-lg p-4 flex items-start gap-3 hover:shadow-sm transition-all ${selected ? 'border-indigo-300 ring-1 ring-indigo-200' : 'border-gray-200'}`}>
+      <input type="checkbox" checked={selected}
+        onChange={(e) => { e.stopPropagation(); onSelect(); }}
+        onClick={(e) => e.stopPropagation()}
+        className="mt-0.5 rounded text-indigo-600 shrink-0" />
+      <button onClick={onClick} className="flex-1 text-left group min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-mono text-gray-400">{story.externalId}</span>
+          <StatusBadge status={story.status} />
         </div>
-        <span className="text-gray-300 group-hover:text-blue-400 text-sm">→</span>
-      </div>
-    </button>
+        <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">{story.title}</p>
+        {story.description && <p className="text-xs text-gray-400 mt-1 truncate">{story.description}</p>}
+        {story.labels.length > 0 && (
+          <div className="flex gap-1 mt-2 flex-wrap">
+            {story.labels.slice(0, 4).map((label) => (
+              <span key={label} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{label}</span>
+            ))}
+          </div>
+        )}
+      </button>
+      <span className="text-gray-300 text-sm shrink-0">→</span>
+    </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    'To Do': 'bg-gray-100 text-gray-600',
-    'New': 'bg-gray-100 text-gray-600',
-    'In Progress': 'bg-blue-100 text-blue-700',
-    'Active': 'bg-blue-100 text-blue-700',
-    'Done': 'bg-green-100 text-green-700',
-    'Resolved': 'bg-green-100 text-green-700',
+    'To Do': 'bg-gray-100 text-gray-600', 'New': 'bg-gray-100 text-gray-600',
+    'In Progress': 'bg-blue-100 text-blue-700', 'Active': 'bg-blue-100 text-blue-700',
+    'Done': 'bg-green-100 text-green-700', 'Resolved': 'bg-green-100 text-green-700',
     'Closed': 'bg-green-100 text-green-700',
   };
-
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full ${colors[status] ?? 'bg-gray-100 text-gray-500'}`}>
       {status || '—'}

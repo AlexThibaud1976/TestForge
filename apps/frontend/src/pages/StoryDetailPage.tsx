@@ -12,6 +12,7 @@ import { GitPushButton } from '../components/GitPushButton.js';
 import { XrayTestButton } from '../components/XrayTestButton.js';
 import { ADOTestCaseButton } from '../components/ADOTestCaseButton.js';
 import { ManualTestList } from '../components/ManualTestList.js';
+import { ValidationBadge } from '../components/ValidationBadge.js';
 import { ManualTestGenerateButton } from '../components/ManualTestGenerateButton.js';
 import { ManualTestValidateButton } from '../components/ManualTestValidateButton.js';
 import { ManualTestPushButton } from '../components/ManualTestPushButton.js';
@@ -38,6 +39,9 @@ interface GeneratedFile {
 interface Generation {
   id: string; files: GeneratedFile[]; usedImprovedVersion: boolean;
   llmProvider: string; llmModel: string; durationMs: number; createdAt: string;
+  validationStatus?: 'skipped' | 'valid' | 'auto_corrected' | 'has_errors' | null;
+  validationErrors?: Array<{ filename: string; line: number; message: string }>;
+  correctionAttempts?: number | null;
 }
 type AnalysisState = 'idle' | 'loading' | 'done' | 'error';
 type GenerationState = 'idle' | 'loading' | 'done' | 'error';
@@ -507,6 +511,13 @@ export function StoryDetailPage() {
                         <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30">
                           ✨ version améliorée
                         </span>
+                      )}
+                      {generation.validationStatus && generation.validationStatus !== 'skipped' && (
+                        <ValidationBadge
+                          status={generation.validationStatus}
+                          errors={generation.validationErrors}
+                          correctionAttempts={generation.correctionAttempts}
+                        />
                       )}
                     </div>
                     <span className="text-xs text-gray-400">

@@ -13,6 +13,8 @@ import { HistoryPage } from './pages/HistoryPage.js';
 import { TeamPage } from './pages/TeamPage.js';
 import { BillingPage } from './pages/BillingPage.js';
 import { GitConfigPage } from './pages/GitConfigPage.js';
+import { AnalyticsPage } from './pages/AnalyticsPage.js';
+import { PomRegistryPage } from './pages/PomRegistryPage.js';
 import { PomTemplatesPage } from './pages/PomTemplatesPage.js';
 import { SuperAdminPage } from './pages/SuperAdminPage.js';
 
@@ -28,6 +30,8 @@ function ProtectedRoutes() {
         <Route path="/settings/team" element={<TeamPage />} />
         <Route path="/settings/billing" element={<BillingPage />} />
         <Route path="/settings/git" element={<GitConfigPage />} />
+        <Route path="/settings/analytics" element={<AnalyticsPage />} />
+        <Route path="/settings/pom-registry" element={<PomRegistryPage />} />
         <Route path="/settings/pom-templates" element={<PomTemplatesPage />} />
         <Route path="/settings" element={<Navigate to="/settings/connections" replace />} />
         <Route path="/super-admin" element={<SuperAdminPage />} />

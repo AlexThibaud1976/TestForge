@@ -5,6 +5,10 @@ import { analyses, generations, generatedFiles, llmConfigs, userStories, pomTemp
 import { createLLMClient } from '../llm/index.js';
 import { decrypt } from '../../utils/encryption.js';
 import { getPrompt } from './prompts/registry.js';
+import { CodeValidator, type FileError } from './CodeValidator.js';
+import { buildCorrectionPrompt } from './prompts/correction-v1.0.js';
+import { PomRegistryService, buildPomContextSection } from './PomRegistryService.js';
+import type { LLMClient } from '../llm/LLMClient.js';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -128,14 +132,21 @@ export class GenerationService {
         ...(llmConfig.ollamaEndpoint ? { ollamaEndpoint: llmConfig.ollamaEndpoint } : {}),
       });
 
+      // Feature 005: Charger les POM existants et injecter dans le prompt
+      const pomRegistryService = new PomRegistryService();
+      const existingPoms = await pomRegistryService.getRelevantPom(teamId, framework, language, 5);
+      const pomContextSection = buildPomContextSection(existingPoms);
+
       // V Feature 002: Injecter les tests manuels validés si fournis
       const manualTestsSection = manualTestSetId
         ? await this.buildManualTestsSection(manualTestSetId)
         : null;
 
-      const finalSystemPrompt = manualTestsSection
-        ? `${systemPromptWithTemplate}\n\n${manualTestsSection}`
-        : systemPromptWithTemplate;
+      const finalSystemPrompt = [
+        systemPromptWithTemplate,
+        pomContextSection,
+        manualTestsSection,
+      ].filter(Boolean).join('\n\n');
 
       const response = await client.complete(
         [
@@ -154,11 +165,26 @@ export class GenerationService {
         { temperature: 0.2, jsonMode: true, maxTokens: 16000 },
       );
 
-      const files = this.parseFiles(response.content);
+      const parsedFiles = this.parseFiles(response.content);
 
-      if (files.length > 0) {
+      // Feature 004: validation syntaxique + self-healing
+      const validator = new CodeValidator();
+      let validationResult = validator.validateFiles(parsedFiles);
+      let finalFiles = parsedFiles;
+      let validationStatus: string = validationResult.status === 'valid' ? 'valid' : 'has_errors';
+      let correctionAttempts = 0;
+
+      if (validationResult.status === 'has_errors') {
+        const healed = await this.selfHeal(parsedFiles, validationResult.errors, client);
+        finalFiles = healed.files;
+        validationStatus = healed.status;
+        correctionAttempts = healed.attempts;
+        validationResult = { ...validationResult, errors: healed.remainingErrors };
+      }
+
+      if (finalFiles.length > 0) {
         await db.insert(generatedFiles).values(
-          files.map((f) => ({
+          finalFiles.map((f) => ({
             generationId,
             fileType: f.type,
             filename: f.filename,
@@ -167,10 +193,21 @@ export class GenerationService {
         );
       }
 
+      // Feature 005: Enregistrer les POM dans le registre (non bloquant)
+      void pomRegistryService.extractAndRegister(
+        generationId, teamId, story.id, finalFiles, framework, language,
+      ).catch(() => undefined); // silencieux
+
       // Mise à jour status → Realtime push au frontend
       await db
         .update(generations)
-        .set({ status: 'success', durationMs: Date.now() - startTime })
+        .set({
+          status: 'success',
+          durationMs: Date.now() - startTime,
+          validationStatus,
+          validationErrors: validationResult.errors,
+          correctionAttempts,
+        })
         .where(eq(generations.id, generationId));
 
     } catch (err) {
@@ -211,6 +248,78 @@ export class GenerationService {
       zip.file(file.filename, file.content);
     }
     return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+  }
+
+  /** Feature 004: Self-healing — tente de corriger les erreurs avec le LLM (max 2 retries) */
+  private async selfHeal(
+    files: GeneratedFileResult[],
+    errors: FileError[],
+    client: LLMClient,
+    maxRetries = 2,
+  ): Promise<{
+    files: GeneratedFileResult[];
+    status: 'auto_corrected' | 'has_errors';
+    attempts: number;
+    remainingErrors: FileError[];
+  }> {
+    const validator = new CodeValidator();
+    let currentFiles = [...files];
+    let currentErrors = [...errors];
+    let attempts = 0;
+
+    // Grouper les erreurs par fichier
+    const errorsByFile = new Map<string, FileError[]>();
+    for (const error of currentErrors) {
+      const existing = errorsByFile.get(error.filename) ?? [];
+      errorsByFile.set(error.filename, [...existing, error]);
+    }
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      if (currentErrors.length === 0) break;
+      attempts++;
+
+      // Corriger chaque fichier en erreur
+      const correctedFiles = await Promise.all(
+        currentFiles.map(async (file) => {
+          const fileErrors = errorsByFile.get(file.filename);
+          if (!fileErrors || fileErrors.length === 0) return file;
+
+          const prompt = buildCorrectionPrompt(file.filename, file.content, fileErrors);
+          try {
+            const response = await client.complete(
+              [{ role: 'user', content: prompt }],
+              { temperature: 0.1, jsonMode: true, maxTokens: 4000 },
+            );
+            const parsed = JSON.parse(response.content) as { filename: string; content: string };
+            if (parsed.content && parsed.filename === file.filename) {
+              return { ...file, content: parsed.content };
+            }
+          } catch {
+            // Correction échouée pour ce fichier — garder l'original
+          }
+          return file;
+        }),
+      );
+
+      // Re-valider
+      const revalidation = validator.validateFiles(correctedFiles);
+      currentFiles = correctedFiles;
+      currentErrors = revalidation.errors;
+      errorsByFile.clear();
+      for (const error of currentErrors) {
+        const existing = errorsByFile.get(error.filename) ?? [];
+        errorsByFile.set(error.filename, [...existing, error]);
+      }
+
+      if (revalidation.status === 'valid') break;
+    }
+
+    return {
+      files: currentFiles,
+      status: currentErrors.length === 0 ? 'auto_corrected' : 'has_errors',
+      attempts,
+      remainingErrors: currentErrors,
+    };
   }
 
   /** Feature 002: Construit la section "Linked Manual Test Cases" pour le prompt */

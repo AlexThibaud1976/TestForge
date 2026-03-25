@@ -21,6 +21,7 @@ export const teams = pgTable('teams', {
   trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }),
   stripeCustomerId: text('stripe_customer_id'),
   suspendedAt: timestamp('suspended_at', { withTimezone: true }), // V2: null = active
+  analyticsCoefficients: jsonb('analytics_coefficients'), // 006: { analysis, generation, manualTest } minutes
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -179,6 +180,10 @@ export const generations = pgTable('generations', {
   errorMessage: text('error_message'),
   durationMs: integer('duration_ms'),
   manualTestSetId: uuid('manual_test_set_id'), // Feature 002: lien optionnel vers le lot de tests manuels
+  // Feature 004: validation syntaxique
+  validationStatus: text('validation_status').default('skipped'), // skipped | valid | auto_corrected | has_errors
+  validationErrors: jsonb('validation_errors').default([]),
+  correctionAttempts: integer('correction_attempts').default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -376,6 +381,37 @@ export const pomTemplates = pgTable(
 
 export const pomTemplatesRelations = relations(pomTemplates, ({ one }) => ({
   team: one(teams, { fields: [pomTemplates.teamId], references: [teams.id] }),
+}));
+
+// ─── Feature 005: POM Registry ────────────────────────────────────────────────
+
+export const pomRegistry = pgTable(
+  'pom_registry',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+    className: text('class_name').notNull(),
+    filename: text('filename').notNull(),
+    methods: jsonb('methods').notNull().default([]),         // [{name, params, returnType, jsdoc}]
+    fullContent: text('full_content').notNull(),
+    sourceGenerationId: uuid('source_generation_id').references(() => generations.id, { onDelete: 'set null' }),
+    sourceUserStoryId: uuid('source_user_story_id').references(() => userStories.id),
+    framework: text('framework').notNull(),
+    language: text('language').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueClassPerStack: uniqueIndex('pom_registry_unique_class').on(
+      table.teamId, table.className, table.framework, table.language,
+    ),
+  }),
+);
+
+export const pomRegistryRelations = relations(pomRegistry, ({ one }) => ({
+  team: one(teams, { fields: [pomRegistry.teamId], references: [teams.id] }),
+  generation: one(generations, { fields: [pomRegistry.sourceGenerationId], references: [generations.id] }),
+  userStory: one(userStories, { fields: [pomRegistry.sourceUserStoryId], references: [userStories.id] }),
 }));
 
 // ─── V2: Super Admins ─────────────────────────────────────────────────────────
