@@ -98,7 +98,7 @@ export class ManualTestService {
     }
 
     // Si pas d'AC originaux mais une version améliorée disponible → forcer useImprovedVersion
-    const effectiveUseImproved = useImprovedVersion || (!hasOriginalAC && hasImprovedVersion);
+    const effectiveUseImproved: boolean = Boolean(useImprovedVersion || (!hasOriginalAC && hasImprovedVersion));
 
     const llmConfig = await db.query.llmConfigs.findFirst({
       where: and(eq(llmConfigs.teamId, teamId), eq(llmConfigs.isDefault, true)),
