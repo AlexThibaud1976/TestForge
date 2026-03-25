@@ -57,7 +57,8 @@ for (const { path: routePath, name } of v2Routes) {
   try {
     const mod = await import(routePath);
     const router = mod.default as express.Router;
-    if (name === '/api (writeback)') {
+    // Les routes avec nom "/api (...)" sont montées sur /api (préfixe sans les routes spécifiques)
+    if (name.startsWith('/api (')) {
       app.use('/api', router);
     } else {
       app.use(name, router);
