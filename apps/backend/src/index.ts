@@ -34,13 +34,6 @@ import userStoriesRouter from './routes/userStories.js';
 import analysesRouter from './routes/analyses.js';
 import llmConfigsRouter from './routes/llmConfigs.js';
 import generationsRouter from './routes/generations.js';
-// V2 routes
-import gitConfigsRouter from './routes/git-configs.js';
-import writebackRouter from './routes/writeback.js';
-import xrayRouter from './routes/xray.js';
-import pomTemplatesRouter from './routes/pom-templates.js';
-import adminRouter from './routes/admin.js';
-
 app.use('/api/auth', authRouter);
 app.use('/api/teams', teamsRouter);
 app.use('/api/connections', connectionsRouter);
@@ -49,15 +42,34 @@ app.use('/api/analyses', analysesRouter);
 app.use('/api/llm-configs', llmConfigsRouter);
 app.use('/api/generations', generationsRouter);
 app.use('/api/billing', billingRouter);
-// V2
-app.use('/api/git-configs', gitConfigsRouter);
-app.use('/api', writebackRouter); // writeback routes: /api/analyses/:id/writeback + /api/user-stories/:id/writeback-history
-app.use('/api/xray-configs', xrayRouter);
-app.use('/api/pom-templates', pomTemplatesRouter);
-app.use('/api/admin', adminRouter);
+
+// V2 routes — chargées dynamiquement pour isoler les erreurs d'import
+const v2Routes: Array<{ path: string; name: string }> = [
+  { path: './routes/git-configs.js', name: '/api/git-configs' },
+  { path: './routes/writeback.js', name: '/api (writeback)' },
+  { path: './routes/xray.js', name: '/api/xray-configs' },
+  { path: './routes/pom-templates.js', name: '/api/pom-templates' },
+  { path: './routes/admin.js', name: '/api/admin' },
+];
+
+for (const { path: routePath, name } of v2Routes) {
+  try {
+    const mod = await import(routePath);
+    const router = mod.default as express.Router;
+    if (name === '/api (writeback)') {
+      app.use('/api', router);
+    } else {
+      app.use(name, router);
+    }
+    console.log(`✅ Route V2 chargée : ${name}`);
+  } catch (err) {
+    console.error(`❌ Erreur chargement route V2 ${name} :`, (err as Error).message);
+  }
+}
 
 app.listen(PORT, () => {
   console.log(`TestForge backend running on http://localhost:${PORT}`);
+  console.log(`TestForge API V2 ready`);
 });
 
 export default app;
