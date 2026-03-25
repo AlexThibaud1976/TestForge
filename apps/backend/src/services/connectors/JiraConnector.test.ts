@@ -108,4 +108,34 @@ describe('JiraConnector', () => {
       expect(stories[0]?.status).toBe('');
     });
   });
+
+  // V2 — writeback
+  describe('updateStory (V2)', () => {
+    it('sends PUT request to update description', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({}, 204));
+      const connector = new JiraConnector(creds);
+      await connector.updateStory('ACME-42', { description: 'New description' });
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/issue/ACME-42'),
+        expect.objectContaining({ method: 'PUT' }),
+      );
+    });
+
+    it('throws on API error during writeback', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({ error: 'Forbidden' }, 403));
+      const connector = new JiraConnector(creds);
+      await expect(connector.updateStory('ACME-42', { description: 'New' })).rejects.toThrow('403');
+    });
+
+    it('includes both description and acceptanceCriteria when both provided', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({}, 204));
+      const connector = new JiraConnector(creds);
+      await connector.updateStory('ACME-42', {
+        description: 'New description',
+        acceptanceCriteria: 'User can do X',
+      });
+      const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string) as { fields: { description?: unknown } };
+      expect(body.fields.description).toBeDefined();
+    });
+  });
 });

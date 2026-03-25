@@ -122,4 +122,62 @@ describe('ADOConnector', () => {
       expect(stories[0]?.acceptanceCriteria).toBe('');
     });
   });
+
+  // V2 — writeback + test plans
+  describe('updateWorkItem (V2)', () => {
+    it('sends PATCH request with JSON Patch for description', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({}));
+      const connector = new ADOConnector(creds);
+      await connector.updateWorkItem(42, { description: 'New description' });
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/workitems/42'),
+        expect.objectContaining({ method: 'PATCH' }),
+      );
+    });
+
+    it('throws on API error during writeback', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({}, false));
+      const connector = new ADOConnector(creds);
+      await expect(connector.updateWorkItem(42, { description: 'New' })).rejects.toThrow('ADO updateWorkItem error');
+    });
+  });
+
+  describe('createTestCase (V2)', () => {
+    it('creates a Test Case work item and returns its ID', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({ id: 1234 }));
+      const connector = new ADOConnector(creds);
+      const id = await connector.createTestCase('Login Test', [
+        { action: 'Click login button', expectedResult: 'User is redirected' },
+      ]);
+      expect(id).toBe(1234);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('$Test%20Case'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('throws on API error when creating test case', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({}, false));
+      const connector = new ADOConnector(creds);
+      await expect(connector.createTestCase('Test', [])).rejects.toThrow('ADO createTestCase error');
+    });
+  });
+
+  describe('addTestCaseToSuite (V2)', () => {
+    it('calls the suite API to add test case', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({}));
+      const connector = new ADOConnector(creds);
+      await connector.addTestCaseToSuite(10, 20, 1234);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/plans/10/suites/20/testcases/1234'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('throws on API error', async () => {
+      mockFetch.mockReturnValueOnce(mockResponse({}, false));
+      const connector = new ADOConnector(creds);
+      await expect(connector.addTestCaseToSuite(10, 20, 1234)).rejects.toThrow('ADO addTestCaseToSuite error');
+    });
+  });
 });
