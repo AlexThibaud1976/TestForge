@@ -136,7 +136,7 @@ describe('ADOConnector', () => {
     });
 
     it('throws on API error during writeback', async () => {
-      mockFetch.mockReturnValueOnce(mockResponse({}, false));
+      mockFetch.mockReturnValueOnce(mockResponse({}, 403));
       const connector = new ADOConnector(creds);
       await expect(connector.updateWorkItem(42, { description: 'New' })).rejects.toThrow('ADO updateWorkItem error');
     });
@@ -157,7 +157,7 @@ describe('ADOConnector', () => {
     });
 
     it('throws on API error when creating test case', async () => {
-      mockFetch.mockReturnValueOnce(mockResponse({}, false));
+      mockFetch.mockReturnValueOnce(mockResponse({}, 400));
       const connector = new ADOConnector(creds);
       await expect(connector.createTestCase('Test', [])).rejects.toThrow('ADO createTestCase error');
     });
@@ -175,7 +175,7 @@ describe('ADOConnector', () => {
     });
 
     it('throws on API error', async () => {
-      mockFetch.mockReturnValueOnce(mockResponse({}, false));
+      mockFetch.mockReturnValueOnce(mockResponse({}, 500));
       const connector = new ADOConnector(creds);
       await expect(connector.addTestCaseToSuite(10, 20, 1234)).rejects.toThrow('ADO addTestCaseToSuite error');
     });

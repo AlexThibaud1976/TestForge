@@ -60,8 +60,9 @@ describe('OllamaAdapter', () => {
 
   it('falls back to localhost:11434 when no ollamaEndpoint', async () => {
     const OpenAI = (await import('openai')).default;
-    const configNoEndpoint: LLMClientConfig = { ...config, ollamaEndpoint: undefined };
-    new OllamaAdapter(configNoEndpoint);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { ollamaEndpoint: _omit, ...configNoEndpoint } = config;
+    new OllamaAdapter(configNoEndpoint as LLMClientConfig);
     expect(OpenAI).toHaveBeenCalledWith(
       expect.objectContaining({ baseURL: 'http://localhost:11434/v1' }),
     );
