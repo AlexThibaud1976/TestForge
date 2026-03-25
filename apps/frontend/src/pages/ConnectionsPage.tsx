@@ -10,6 +10,8 @@ interface Connection {
   isActive: boolean;
   lastSyncAt: string | null;
   createdAt: string;
+  xrayClientId?: string | null;
+  hasXray?: boolean;
 }
 
 type FormType = 'jira' | 'azure_devops' | null;
@@ -21,6 +23,7 @@ export function ConnectionsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, boolean | string>>({});
+  const [xrayFormId, setXrayFormId] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<Connection[]>('/api/connections')
@@ -113,13 +116,20 @@ export function ConnectionsPage() {
                       Synchro: {new Date(conn.lastSyncAt).toLocaleString('fr-FR')}
                     </p>
                   )}
+                  {conn.type === 'jira' && (
+                    <p className="text-xs mt-1">
+                      {conn.hasXray
+                        ? <span className="text-green-600">✅ Xray configuré ({conn.xrayClientId})</span>
+                        : <span className="text-gray-400">Xray non configuré</span>}
+                    </p>
+                  )}
                   {testResult[conn.id] !== undefined && (
                     <p className={`text-xs mt-1 ${testResult[conn.id] === true ? 'text-green-600' : 'text-red-600'}`}>
                       {testResult[conn.id] === true ? '✓ Connexion OK' : `✗ ${String(testResult[conn.id])}`}
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap justify-end">
                   <button
                     onClick={() => void handleTest(conn.id)}
                     disabled={testingId === conn.id}
@@ -127,6 +137,14 @@ export function ConnectionsPage() {
                   >
                     {testingId === conn.id ? '...' : 'Tester'}
                   </button>
+                  {conn.type === 'jira' && (
+                    <button
+                      onClick={() => setXrayFormId(xrayFormId === conn.id ? null : conn.id)}
+                      className="text-xs px-2 py-1 border border-purple-200 rounded text-purple-600 hover:bg-purple-50"
+                    >
+                      🔗 Xray
+                    </button>
+                  )}
                   <button
                     onClick={() => void handleDelete(conn.id)}
                     className="text-xs px-2 py-1 border border-red-200 rounded text-red-500 hover:bg-red-50"
@@ -135,6 +153,17 @@ export function ConnectionsPage() {
                   </button>
                 </div>
               </div>
+              {xrayFormId === conn.id && conn.type === 'jira' && (
+                <XrayConfigForm
+                  connectionId={conn.id}
+                  currentClientId={conn.xrayClientId ?? null}
+                  onSaved={(updated) => {
+                    setConnections((prev) => prev.map((c) => c.id === conn.id ? { ...c, ...updated } : c));
+                    setXrayFormId(null);
+                  }}
+                  onCancel={() => setXrayFormId(null)}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -146,7 +175,7 @@ export function ConnectionsPage() {
 // ─── Formulaire Jira ──────────────────────────────────────────────────────────
 
 function JiraForm({ onCreated, onCancel }: { onCreated: (c: Connection) => void; onCancel: () => void }) {
-  const [form, setForm] = useState({ name: '', baseUrl: '', email: '', apiToken: '', projectKey: '' });
+  const [form, setForm] = useState({ name: '', baseUrl: '', email: '', apiToken: '', projectKey: '', xrayClientId: '', xrayClientSecret: '' });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -155,7 +184,19 @@ function JiraForm({ onCreated, onCancel }: { onCreated: (c: Connection) => void;
     setError(null);
     setLoading(true);
     try {
-      const conn = await api.post<Connection>('/api/connections', { type: 'jira', ...form });
+      const body = {
+        type: 'jira',
+        name: form.name,
+        baseUrl: form.baseUrl,
+        email: form.email,
+        apiToken: form.apiToken,
+        projectKey: form.projectKey,
+        ...(form.xrayClientId && form.xrayClientSecret ? {
+          xrayClientId: form.xrayClientId,
+          xrayClientSecret: form.xrayClientSecret,
+        } : {}),
+      };
+      const conn = await api.post<Connection>('/api/connections', body);
       onCreated(conn);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur');
@@ -174,12 +215,94 @@ function JiraForm({ onCreated, onCancel }: { onCreated: (c: Connection) => void;
         <Field label="API Token" value={form.apiToken} onChange={(v) => setForm({ ...form, apiToken: v })} placeholder="ATATxxxx..." type="password" />
         <Field label="Project Key" value={form.projectKey} onChange={(v) => setForm({ ...form, projectKey: v })} placeholder="ACME" />
       </div>
+
+      <div className="border-t border-blue-200 pt-3">
+        <p className="text-xs font-medium text-blue-700 mb-2">🔗 Xray Cloud (optionnel)</p>
+        <div className="grid grid-cols-2 gap-3">
+          <OptionalField label="Client ID" value={form.xrayClientId} onChange={(v) => setForm({ ...form, xrayClientId: v })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx" />
+          <OptionalField label="Client Secret" value={form.xrayClientSecret} onChange={(v) => setForm({ ...form, xrayClientSecret: v })} placeholder="secret..." type="password" />
+        </div>
+        <p className="text-xs text-blue-500 mt-1">Obtenez vos clés dans Xray Cloud → API Keys. Laissez vide si non utilisé.</p>
+      </div>
+
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={loading} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
           {loading ? 'Création...' : 'Créer'}
         </button>
         <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ─── Formulaire Xray inline (sur connexion existante) ─────────────────────────
+
+function XrayConfigForm({ connectionId, currentClientId, onSaved, onCancel }: {
+  connectionId: string;
+  currentClientId: string | null;
+  onSaved: (data: { xrayClientId: string | null; hasXray: boolean }) => void;
+  onCancel: () => void;
+}) {
+  const [clientId, setClientId] = useState(currentClientId ?? '');
+  const [clientSecret, setClientSecret] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.put<{ xrayClientId: string | null; hasXray: boolean }>(
+        `/api/connections/${connectionId}/xray`,
+        { clientId: clientId || null, clientSecret: clientSecret || null },
+      );
+      onSaved(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!confirm('Retirer la config Xray de cette connexion ?')) return;
+    setLoading(true);
+    try {
+      const data = await api.put<{ xrayClientId: string | null; hasXray: boolean }>(
+        `/api/connections/${connectionId}/xray`,
+        { clientId: null, clientSecret: null },
+      );
+      onSaved(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={(e) => void handleSave(e)} className="mt-3 bg-purple-50 border border-purple-200 rounded-lg p-3 space-y-2">
+      <p className="text-xs font-semibold text-purple-800">🔗 Configuration Xray Cloud</p>
+      <div className="grid grid-cols-2 gap-2">
+        <OptionalField label="Client ID" value={clientId} onChange={setClientId} placeholder="xxxxxxxx-xxxx-xxxx-xxxx" />
+        <OptionalField label="Client Secret" value={clientSecret} onChange={setClientSecret} placeholder={currentClientId ? '(inchangé si vide)' : 'secret...'} type="password" />
+      </div>
+      <p className="text-xs text-purple-500">Xray Cloud → Settings → API Keys</p>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button type="submit" disabled={loading} className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50">
+          {loading ? 'Enregistrement...' : 'Enregistrer'}
+        </button>
+        {currentClientId && (
+          <button type="button" onClick={() => void handleRemove()} disabled={loading} className="px-2 py-1 text-xs border border-red-200 text-red-500 rounded hover:bg-red-50">
+            Retirer Xray
+          </button>
+        )}
+        <button type="button" onClick={onCancel} className="px-2 py-1 text-xs border border-gray-200 text-gray-500 rounded hover:bg-gray-50">
           Annuler
         </button>
       </div>
@@ -243,6 +366,23 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  );
+}
+
+function OptionalField({ label, value, onChange, placeholder, type = 'text' }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white"
       />
     </div>
   );

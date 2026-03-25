@@ -18,6 +18,8 @@ const jiraSchema = z.object({
   email: z.string().email(),
   apiToken: z.string().min(1),
   projectKey: z.string().min(1),
+  xrayClientId: z.string().optional(),
+  xrayClientSecret: z.string().optional(),
 });
 
 const adoSchema = z.object({
@@ -43,11 +45,13 @@ router.get('/', requireAuth, async (req: Request, res) => {
       isActive: sourceConnections.isActive,
       lastSyncAt: sourceConnections.lastSyncAt,
       createdAt: sourceConnections.createdAt,
+      xrayClientId: sourceConnections.xrayClientId, // exposé (pas un secret)
     })
     .from(sourceConnections)
     .where(eq(sourceConnections.teamId, teamId));
 
-  res.json(rows);
+  // hasXray = true si les deux credentials Xray sont présents
+  res.json(rows.map((r) => ({ ...r, hasXray: !!(r.xrayClientId) })));
 });
 
 // POST /api/connections
@@ -69,6 +73,10 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res) => {
 
   const projectKey = data.type === 'jira' ? data.projectKey : data.project;
 
+  // Chiffrer le secret Xray si fourni (uniquement pour Jira)
+  const xrayClientId = data.type === 'jira' && data.xrayClientId ? data.xrayClientId : null;
+  const xrayClientSecret = data.type === 'jira' && data.xrayClientSecret ? encrypt(data.xrayClientSecret) : null;
+
   const [created] = await db
     .insert(sourceConnections)
     .values({
@@ -78,6 +86,8 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res) => {
       baseUrl: data.baseUrl,
       encryptedCredentials: encrypt(credentials),
       projectKey,
+      xrayClientId,
+      xrayClientSecret,
     })
     .returning();
 
@@ -89,6 +99,8 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res) => {
     projectKey: created?.projectKey,
     isActive: created?.isActive,
     createdAt: created?.createdAt,
+    xrayClientId: created?.xrayClientId,
+    hasXray: !!(created?.xrayClientId),
   });
 });
 
@@ -134,6 +146,38 @@ router.post('/:id/test', requireAuth, requireAdmin, async (req: Request, res) =>
       error: err instanceof Error ? err.message : 'Connection test failed',
     });
   }
+});
+
+// PUT /api/connections/:id/xray — configure ou retire les credentials Xray d'une connexion Jira
+router.put('/:id/xray', requireAuth, requireAdmin, async (req: Request, res) => {
+  const { teamId } = req as AuthenticatedRequest;
+  const parsed = z.object({
+    clientId: z.string().min(1).nullable(),
+    clientSecret: z.string().min(1).nullable(),
+  }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const { clientId, clientSecret } = parsed.data;
+
+  const [connection] = await db
+    .select({ type: sourceConnections.type })
+    .from(sourceConnections)
+    .where(and(eq(sourceConnections.id, req.params['id'] as string), eq(sourceConnections.teamId, teamId)))
+    .limit(1);
+
+  if (!connection) { res.status(404).json({ error: 'Connection not found' }); return; }
+  if (connection.type !== 'jira') { res.status(400).json({ error: 'Xray is only available for Jira connections' }); return; }
+
+  const [updated] = await db
+    .update(sourceConnections)
+    .set({
+      xrayClientId: clientId,
+      xrayClientSecret: clientSecret ? encrypt(clientSecret) : null,
+    })
+    .where(and(eq(sourceConnections.id, req.params['id'] as string), eq(sourceConnections.teamId, teamId)))
+    .returning({ id: sourceConnections.id, xrayClientId: sourceConnections.xrayClientId });
+
+  res.json({ id: updated?.id, xrayClientId: updated?.xrayClientId, hasXray: !!(updated?.xrayClientId) });
 });
 
 // DELETE /api/connections/:id

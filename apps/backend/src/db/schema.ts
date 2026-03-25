@@ -91,6 +91,9 @@ export const sourceConnections = pgTable('source_connections', {
   projectKey: text('project_key').notNull(),
   isActive: boolean('is_active').notNull().default(true),
   lastSyncAt: timestamp('last_sync_at', { withTimezone: true }),
+  // V2 Xray — credentials optionnels, uniquement pour les connexions Jira
+  xrayClientId: text('xray_client_id'),
+  xrayClientSecret: text('xray_client_secret'), // chiffré AES-256-GCM
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
