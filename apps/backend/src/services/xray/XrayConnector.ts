@@ -13,6 +13,9 @@ export interface XrayTestDefinition {
   summary: string;
   steps: XrayStep[];
   requirementKey?: string;
+  // Credentials Jira — si fournis, crée l'issue via l'API Jira (plus fiable que /import/test)
+  jiraBaseUrl?: string | undefined;
+  jiraAuthHeader?: string | undefined;
 }
 
 export interface XrayTestCreated {
@@ -72,47 +75,82 @@ export class XrayConnector {
   }
 
   async createTest(definition: XrayTestDefinition): Promise<XrayTestCreated> {
-    const token = await this.authenticate();
+    const xrayToken = await this.authenticate();
 
-    // Format Xray Cloud v2 — tableau de tests au format natif Xray (pas le format Jira issue)
-    const payload = [
-      {
+    let testId: string;
+    let testKey: string;
+
+    if (definition.jiraBaseUrl && definition.jiraAuthHeader) {
+      // Approche fiable : créer l'issue Jira de type "Test" via l'API Jira standard
+      const issueRes = await fetch(`${definition.jiraBaseUrl}/rest/api/3/issue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: definition.jiraAuthHeader,
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          fields: {
+            project: { key: definition.projectKey },
+            summary: definition.summary,
+            issuetype: { name: 'Test' },
+          },
+        }),
+      });
+
+      if (!issueRes.ok) {
+        const text = await issueRes.text();
+        throw new Error(`Jira Test issue creation failed: ${text}`);
+      }
+
+      const issue = await issueRes.json() as { id: string; key: string };
+      testId = issue.id;
+      testKey = issue.key;
+
+      // Ajouter les test steps via l'API Xray
+      for (const step of definition.steps) {
+        await fetch(`${XRAY_BASE}/test/${testKey}/step`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${xrayToken}`,
+          },
+          body: JSON.stringify({ action: step.action, data: '', result: step.result }),
+        }).catch(() => undefined); // steps non-bloquants
+      }
+    } else {
+      // Fallback : endpoint Xray /import/test (format natif Xray Cloud v2)
+      const payload = [{
         testtype: 'Manual',
         projectKey: definition.projectKey,
         summary: definition.summary,
-        steps: definition.steps.map((s) => ({
-          action: s.action,
-          data: '',
-          result: s.result,
-        })),
-      },
-    ];
+        steps: definition.steps.map((s) => ({ action: s.action, data: '', result: s.result })),
+      }];
 
-    const res = await fetch(`${XRAY_BASE}/import/test`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
+      const res = await fetch(`${XRAY_BASE}/import/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${xrayToken}` },
+        body: JSON.stringify(payload),
+      });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Xray test creation failed: ${text}`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Xray test creation failed: ${text}`);
+      }
+
+      const raw = await res.json() as { id: string; key: string }[] | { id: string; key: string };
+      const data = Array.isArray(raw) ? raw[0] : raw;
+      if (!data) throw new Error('Xray: no test created in response');
+      testId = data.id;
+      testKey = data.key;
     }
 
-    // L'API Xray Cloud v2 /import/test retourne un tableau de tests créés
-    const raw = await res.json() as { id: string; key: string }[] | { id: string; key: string };
-    const data = Array.isArray(raw) ? raw[0] : raw;
-    if (!data) throw new Error('Xray: no test created in response');
-
-    // Link to requirement if provided
+    // Lier à la requirement si fournie
     if (definition.requirementKey) {
-      await this.linkToRequirement(data.key, definition.requirementKey, token);
+      await this.linkToRequirement(testKey, definition.requirementKey, xrayToken);
     }
 
-    return { testId: data.id, testKey: data.key };
+    return { testId, testKey };
   }
 
   private async linkToRequirement(testKey: string, requirementKey: string, token: string): Promise<void> {

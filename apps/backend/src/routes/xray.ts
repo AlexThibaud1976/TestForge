@@ -117,11 +117,26 @@ export async function handleCreateXrayTest(req: Request, res: any): Promise<void
 
     const connector = new XrayConnector({ clientId, clientSecret });
     const steps = connector.mapStepsFromAC(story.acceptanceCriteria ?? story.description ?? '');
+
+    // Construire le header Jira Basic Auth si la connexion source a les credentials Jira
+    let jiraAuthHeader: string | undefined;
+    let jiraBaseUrl: string | undefined;
+    if (story.connectionId) {
+      const [conn] = await db.select().from(sourceConnections).where(eq(sourceConnections.id, story.connectionId)).limit(1);
+      if (conn?.type === 'jira') {
+        const jiraCreds = JSON.parse(decrypt(conn.encryptedCredentials)) as { email: string; apiToken: string };
+        jiraAuthHeader = 'Basic ' + Buffer.from(`${jiraCreds.email}:${jiraCreds.apiToken}`).toString('base64');
+        jiraBaseUrl = conn.baseUrl;
+      }
+    }
+
     const created = await connector.createTest({
       projectKey,
       summary: `[TestForge] ${story.title}`,
       steps,
       requirementKey: (req.body as { requirementKey?: string }).requirementKey ?? story.externalId,
+      jiraBaseUrl,
+      jiraAuthHeader,
     });
 
     const [record] = await db
