@@ -144,9 +144,11 @@ describe('ManualTestService', () => {
       expect(result.lowScoreWarning).toBe(true);
     });
 
-    it('throw si l\'US n\'a pas d\'acceptance criteria', async () => {
+    it('throw si l\'US n\'a pas d\'acceptance criteria et pas de version améliorée', async () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       mockDb.query.userStories.findFirst.mockResolvedValue({ ...mockStory, acceptanceCriteria: '' });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      mockDb.query.analyses.findFirst.mockResolvedValue({ ...mockAnalysis, improvedVersion: null });
       await expect(service.generate('a-1', 't-1', false)).rejects.toThrow('critères d\'acceptance');
     });
 
