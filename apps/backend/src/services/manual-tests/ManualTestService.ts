@@ -88,11 +88,17 @@ export class ManualTestService {
     });
     if (!story) throw new Error('User story not found');
 
-    if (!story.acceptanceCriteria || story.acceptanceCriteria.trim().length === 0) {
+    const hasOriginalAC = story.acceptanceCriteria && story.acceptanceCriteria.trim().length > 0;
+    const hasImprovedVersion = analysis.improvedVersion && analysis.improvedVersion.trim().length > 0;
+
+    if (!hasOriginalAC && !hasImprovedVersion) {
       throw new Error(
-        'Cette user story n\'a pas de critères d\'acceptance. Ajoutez des AC avant de générer les tests manuels.',
+        'Cette user story n\'a pas de critères d\'acceptance et aucune version améliorée. Lancez d\'abord une analyse.',
       );
     }
+
+    // Si pas d'AC originaux mais une version améliorée disponible → forcer useImprovedVersion
+    const effectiveUseImproved = useImprovedVersion || (!hasOriginalAC && hasImprovedVersion);
 
     const llmConfig = await db.query.llmConfigs.findFirst({
       where: and(eq(llmConfigs.teamId, teamId), eq(llmConfigs.isDefault, true)),
@@ -120,7 +126,7 @@ export class ManualTestService {
             story.description ?? '',
             story.acceptanceCriteria,
             suggestions,
-            useImprovedVersion,
+            effectiveUseImproved,
             analysis.improvedVersion,
           ),
         },
@@ -137,7 +143,7 @@ export class ManualTestService {
         analysisId,
         teamId,
         userStoryId: story.id,
-        usedImprovedVersion: useImprovedVersion,
+        usedImprovedVersion: effectiveUseImproved,
         version: 1,
         excludedCriteria: parsed.excludedCriteria,
         llmProvider: llmConfig.provider,
