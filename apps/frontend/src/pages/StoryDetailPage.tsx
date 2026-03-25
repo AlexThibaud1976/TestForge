@@ -7,6 +7,10 @@ import { ImprovedVersion } from '../components/analysis/ImprovedVersion.js';
 import { CodeViewer } from '../components/generation/CodeViewer.js';
 import { FrameworkSelector } from '../components/generation/FrameworkSelector.js';
 import { useRealtimeRow } from '../hooks/useRealtime.js';
+import { WritebackButton } from '../components/WritebackButton.js';
+import { GitPushButton } from '../components/GitPushButton.js';
+import { XrayTestButton } from '../components/XrayTestButton.js';
+import { ADOTestCaseButton } from '../components/ADOTestCaseButton.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -271,6 +275,14 @@ export function StoryDetailPage() {
                 </Card>
               )}
 
+              {analysisState === 'done' && analysis?.improvedVersion && (
+                <WritebackButton
+                  analysisId={analysis.id}
+                  improvedVersion={analysis.improvedVersion}
+                  originalDescription={story.description}
+                />
+              )}
+
               {analysisState === 'done' && (
                 <button
                   onClick={() => setActiveTab('generation')}
@@ -386,24 +398,33 @@ export function StoryDetailPage() {
 
             {/* Code généré — pleine largeur */}
             {generationState === 'done' && generation && generation.files.length > 0 && (
-              <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-gray-900 to-gray-800">
-                  <div className="flex items-center gap-3">
-                    <span className="text-white font-medium text-sm">Tests générés</span>
-                    <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full border border-green-500/30">
-                      {generation.files.length} fichiers
-                    </span>
-                    {generation.usedImprovedVersion && (
-                      <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30">
-                        ✨ version améliorée
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-gray-400">
-                    {generation.llmProvider} · {generation.llmModel} · {Math.round(generation.durationMs / 1000)}s
-                  </span>
+              <div className="space-y-3">
+                {/* Boutons d'action V2 */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <GitPushButton generationId={generation.id} />
+                  <XrayTestButton generationId={generation.id} />
+                  <ADOTestCaseButton generationId={generation.id} />
                 </div>
-                <CodeViewer files={generation.files} generationId={generation.id} />
+
+                <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                  <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-gray-900 to-gray-800">
+                    <div className="flex items-center gap-3">
+                      <span className="text-white font-medium text-sm">Tests générés</span>
+                      <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full border border-green-500/30">
+                        {generation.files.length} fichiers
+                      </span>
+                      {generation.usedImprovedVersion && (
+                        <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30">
+                          ✨ version améliorée
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-400">
+                      {generation.llmProvider} · {generation.llmModel} · {Math.round(generation.durationMs / 1000)}s
+                    </span>
+                  </div>
+                  <CodeViewer files={generation.files} generationId={generation.id} />
+                </div>
               </div>
             )}
 
