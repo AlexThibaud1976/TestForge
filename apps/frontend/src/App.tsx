@@ -12,6 +12,9 @@ import { LLMConfigPage } from './pages/LLMConfigPage.js';
 import { HistoryPage } from './pages/HistoryPage.js';
 import { TeamPage } from './pages/TeamPage.js';
 import { BillingPage } from './pages/BillingPage.js';
+import { GitConfigPage } from './pages/GitConfigPage.js';
+import { PomTemplatesPage } from './pages/PomTemplatesPage.js';
+import { SuperAdminPage } from './pages/SuperAdminPage.js';
 
 function ProtectedRoutes() {
   return (
@@ -24,7 +27,10 @@ function ProtectedRoutes() {
         <Route path="/settings/llm" element={<LLMConfigPage />} />
         <Route path="/settings/team" element={<TeamPage />} />
         <Route path="/settings/billing" element={<BillingPage />} />
+        <Route path="/settings/git" element={<GitConfigPage />} />
+        <Route path="/settings/pom-templates" element={<PomTemplatesPage />} />
         <Route path="/settings" element={<Navigate to="/settings/connections" replace />} />
+        <Route path="/super-admin" element={<SuperAdminPage />} />
         <Route path="*" element={<Navigate to="/stories" replace />} />
       </Routes>
     </AppLayout>

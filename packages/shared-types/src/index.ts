@@ -39,7 +39,7 @@ export interface SourceConnection {
 
 // ─── LLM ──────────────────────────────────────────────────────────────────────
 
-export type LLMProvider = 'openai' | 'azure_openai' | 'anthropic';
+export type LLMProvider = 'openai' | 'azure_openai' | 'anthropic' | 'mistral' | 'ollama';
 
 export interface LLMConfig {
   id: string;

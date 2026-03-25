@@ -1,5 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { db } from '../db/index.js';
+import { teams } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 
 const supabase = createClient(
   process.env['SUPABASE_URL']!,
@@ -40,6 +43,18 @@ export async function requireAuth(
 
   if (memberError || !member) {
     res.status(403).json({ error: 'User is not part of any team' });
+    return;
+  }
+
+  // V2: vérifier que le compte équipe n'est pas suspendu
+  const [team] = await db
+    .select({ suspendedAt: teams.suspendedAt })
+    .from(teams)
+    .where(eq(teams.id, member.team_id as string))
+    .limit(1);
+
+  if (team?.suspendedAt) {
+    res.status(403).json({ error: 'account_suspended' });
     return;
   }
 

@@ -26,6 +26,7 @@ export interface LLMClientConfig {
   apiKey: string; // déjà déchiffré
   azureEndpoint?: string;
   azureDeployment?: string;
+  ollamaEndpoint?: string; // V2: URL du serveur Ollama (ex: http://localhost:11434)
 }
 
 // ─── Interface ────────────────────────────────────────────────────────────────
