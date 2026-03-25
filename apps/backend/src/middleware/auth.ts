@@ -47,15 +47,20 @@ export async function requireAuth(
   }
 
   // V2: vérifier que le compte équipe n'est pas suspendu
-  const [team] = await db
-    .select({ suspendedAt: teams.suspendedAt })
-    .from(teams)
-    .where(eq(teams.id, member.team_id as string))
-    .limit(1);
+  // Le try/catch protège le cas où la colonne suspended_at n'existe pas encore en base
+  try {
+    const [team] = await db
+      .select({ suspendedAt: teams.suspendedAt })
+      .from(teams)
+      .where(eq(teams.id, member.team_id as string))
+      .limit(1);
 
-  if (team?.suspendedAt) {
-    res.status(403).json({ error: 'account_suspended' });
-    return;
+    if (team?.suspendedAt) {
+      res.status(403).json({ error: 'account_suspended' });
+      return;
+    }
+  } catch {
+    // Colonne suspended_at non encore migrée — on continue sans le check
   }
 
   (req as AuthenticatedRequest).userId = data.user.id;

@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { gitConfigs, gitPushes } from '../db/schema.js';
+import { gitConfigs } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import { GitHubAdapter } from '../services/git/GitHubAdapter.js';
 import { GitLabAdapter } from '../services/git/GitLabAdapter.js';
 import { AzureReposAdapter } from '../services/git/AzureReposAdapter.js';
-import { GitPushService } from '../services/git/GitPushService.js';
 import type { Request } from 'express';
 
 const router: ReturnType<typeof Router> = Router();
