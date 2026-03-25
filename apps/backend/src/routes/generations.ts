@@ -132,9 +132,15 @@ router.post('/:id/push', requireAuth, async (req: Request, res) => {
   }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const service = new GitPushService();
-  const result = await service.push({ generationId: req.params['id'] as string, teamId, ...parsed.data });
-  res.status(201).json(result);
+  try {
+    const service = new GitPushService();
+    const result = await service.push({ generationId: req.params['id'] as string, teamId, ...parsed.data });
+    res.status(201).json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[push]', message);
+    res.status(500).json({ error: message });
+  }
 });
 
 // GET /api/generations/:id/push-history
@@ -161,6 +167,7 @@ router.post('/:id/ado-test-case', requireAuth, async (req: Request, res) => {
   }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
+  try {
   const [generation] = await db.select().from(generations).where(eq(generations.id, generationId)).limit(1);
   if (!generation || generation.teamId !== teamId) { res.status(404).json({ error: 'Generation not found' }); return; }
 
@@ -176,7 +183,6 @@ router.post('/:id/ado-test-case', requireAuth, async (req: Request, res) => {
   const credentials = JSON.parse(decrypt(connection.encryptedCredentials)) as Record<string, string>;
   const ado = new ADOConnector({ organizationUrl: connection.baseUrl, project: connection.projectKey, pat: credentials['pat']! });
 
-  // Build steps from AC
   const steps = (story.acceptanceCriteria ?? '').split('\n')
     .filter((l) => l.trim())
     .map((l) => ({ action: l.trim(), expectedResult: 'Vérification conforme' }));
@@ -193,6 +199,11 @@ router.post('/:id/ado-test-case', requireAuth, async (req: Request, res) => {
     .returning();
 
   res.status(201).json(record);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[ado-test-case]', message);
+    res.status(500).json({ error: message });
+  }
 });
 
 export default router;

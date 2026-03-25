@@ -26,7 +26,6 @@ const pushSchema = z.object({
 
 // GET /api/git-configs
 router.get('/', requireAuth, async (req: Request, res) => {
-  console.log('[git-configs GET] reached, teamId:', (req as AuthenticatedRequest).teamId);
   const { teamId } = req as AuthenticatedRequest;
   const configs = await db
     .select({
@@ -44,7 +43,6 @@ router.get('/', requireAuth, async (req: Request, res) => {
 
 // POST /api/git-configs
 router.post('/', requireAuth, async (req: Request, res) => {
-  console.log('[git-configs POST] reached, body:', JSON.stringify(req.body));
   const { teamId } = req as AuthenticatedRequest;
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {

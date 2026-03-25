@@ -69,7 +69,6 @@ for (const { path: routePath, name } of v2Routes) {
 
 app.listen(PORT, () => {
   console.log(`TestForge backend running on http://localhost:${PORT}`);
-  console.log(`TestForge API V2 ready`);
 });
 
 export default app;
