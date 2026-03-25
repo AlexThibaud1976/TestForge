@@ -74,21 +74,19 @@ export class XrayConnector {
   async createTest(definition: XrayTestDefinition): Promise<XrayTestCreated> {
     const token = await this.authenticate();
 
-    const payload = {
-      fields: {
-        project: { key: definition.projectKey },
+    // Format Xray Cloud v2 — tableau de tests au format natif Xray (pas le format Jira issue)
+    const payload = [
+      {
+        testtype: 'Manual',
+        projectKey: definition.projectKey,
         summary: definition.summary,
-        issuetype: { name: 'Test' },
+        steps: definition.steps.map((s) => ({
+          action: s.action,
+          data: '',
+          result: s.result,
+        })),
       },
-      xray_test_steps: definition.steps.map((s, i) => ({
-        id: String(i + 1),
-        index: i + 1,
-        fields: {
-          Action: s.action,
-          Result: s.result,
-        },
-      })),
-    };
+    ];
 
     const res = await fetch(`${XRAY_BASE}/import/test`, {
       method: 'POST',
@@ -104,7 +102,10 @@ export class XrayConnector {
       throw new Error(`Xray test creation failed: ${text}`);
     }
 
-    const data = (await res.json()) as { id: string; key: string };
+    // L'API Xray Cloud v2 /import/test retourne un tableau de tests créés
+    const raw = await res.json() as { id: string; key: string }[] | { id: string; key: string };
+    const data = Array.isArray(raw) ? raw[0] : raw;
+    if (!data) throw new Error('Xray: no test created in response');
 
     // Link to requirement if provided
     if (definition.requirementKey) {
