@@ -53,18 +53,24 @@ router.post('/', requireAuth, async (req: Request, res) => {
     return;
   }
   const { provider, name, repoUrl, token, defaultBranch } = parsed.data;
-  const [config] = await db
-    .insert(gitConfigs)
-    .values({ teamId, provider, name, repoUrl, encryptedToken: encrypt(token), defaultBranch })
-    .returning({
-      id: gitConfigs.id,
-      provider: gitConfigs.provider,
-      name: gitConfigs.name,
-      repoUrl: gitConfigs.repoUrl,
-      defaultBranch: gitConfigs.defaultBranch,
-      createdAt: gitConfigs.createdAt,
-    });
-  res.status(201).json(config);
+  try {
+    const [config] = await db
+      .insert(gitConfigs)
+      .values({ teamId, provider, name, repoUrl, encryptedToken: encrypt(token), defaultBranch })
+      .returning({
+        id: gitConfigs.id,
+        provider: gitConfigs.provider,
+        name: gitConfigs.name,
+        repoUrl: gitConfigs.repoUrl,
+        defaultBranch: gitConfigs.defaultBranch,
+        createdAt: gitConfigs.createdAt,
+      });
+    res.status(201).json(config);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[git-configs POST]', message);
+    res.status(500).json({ error: message });
+  }
 });
 
 // POST /api/git-configs/:id/test
