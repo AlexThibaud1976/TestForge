@@ -187,6 +187,19 @@ export class XrayConnector {
     }
   }
 
+  async updateTestSteps(testKey: string, steps: XrayStep[]): Promise<void> {
+    const token = await this.authenticate();
+    const res = await fetch(`${XRAY_BASE}/test/${testKey}/step`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(steps.map((s, i) => ({ index: i + 1, action: s.action, data: '', result: s.result }))),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Xray updateTestSteps failed: ${text}`);
+    }
+  }
+
   private async linkToRequirement(testKey: string, requirementKey: string, token: string): Promise<void> {
     await fetch(`${XRAY_BASE}/testcase/${testKey}/preconditions`, {
       method: 'POST',

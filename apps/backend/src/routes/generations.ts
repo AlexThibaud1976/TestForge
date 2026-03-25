@@ -23,6 +23,7 @@ router.post('/', requireAuth, async (req: Request, res) => {
     useImprovedVersion: z.boolean().default(false),
     framework: z.enum(['playwright', 'selenium']).default('playwright'),
     language: z.enum(['typescript', 'javascript', 'python', 'java', 'csharp']).default('typescript'),
+    manualTestSetId: z.string().uuid().optional(),
   }).safeParse(req.body);
 
   if (!parsed.success) {
@@ -38,11 +39,13 @@ router.post('/', requireAuth, async (req: Request, res) => {
       parsed.data.useImprovedVersion,
       parsed.data.framework,
       parsed.data.language,
+      parsed.data.manualTestSetId,
     );
 
     // Lancer la génération en arrière-plan — Realtime notifie le frontend
     void generationService.processGeneration(pending.id, pending.analysisId, teamId,
-      parsed.data.useImprovedVersion, parsed.data.framework, parsed.data.language);
+      parsed.data.useImprovedVersion, parsed.data.framework, parsed.data.language,
+      parsed.data.manualTestSetId);
 
     res.status(201).json(pending); // { id, status: 'pending' }
   } catch (err) {

@@ -229,6 +229,31 @@ export class ADOConnector {
     if (!res.ok) throw new Error(`ADO addTestCaseToSuite error ${res.status}`);
   }
 
+  // V2: Met à jour les steps d'un Test Case ADO existant
+  async updateTestCaseSteps(
+    testCaseId: number,
+    steps: { action: string; expectedResult: string }[],
+  ): Promise<void> {
+    const stepsXml = steps
+      .map(
+        (s, i) =>
+          `<step id="${i + 1}" type="ValidateStep"><parameterizedString isformatted="true">${s.action}</parameterizedString><parameterizedString isformatted="true">${s.expectedResult}</parameterizedString></step>`,
+      )
+      .join('');
+
+    const res = await fetch(
+      `${this.orgUrl}/${this.project}/_apis/wit/workitems/${testCaseId}?api-version=${API_VERSION}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: this.authHeader, Accept: 'application/json', 'Content-Type': 'application/json-patch+json' },
+        body: JSON.stringify([
+          { op: 'replace', path: '/fields/Microsoft.VSTS.TCM.Steps', value: `<steps id="0" last="${steps.length}">${stepsXml}</steps>` },
+        ]),
+      },
+    );
+    if (!res.ok) throw new Error(`ADO updateTestCaseSteps error ${res.status}`);
+  }
+
   /** Supprime les balises HTML présentes dans les champs ADO (Description, AC) */
   private stripHtml(html: string | null): string {
     if (!html) return '';

@@ -11,6 +11,11 @@ import { WritebackButton } from '../components/WritebackButton.js';
 import { GitPushButton } from '../components/GitPushButton.js';
 import { XrayTestButton } from '../components/XrayTestButton.js';
 import { ADOTestCaseButton } from '../components/ADOTestCaseButton.js';
+import { ManualTestList } from '../components/ManualTestList.js';
+import { ManualTestGenerateButton } from '../components/ManualTestGenerateButton.js';
+import { ManualTestValidateButton } from '../components/ManualTestValidateButton.js';
+import { ManualTestPushButton } from '../components/ManualTestPushButton.js';
+import type { ManualTestSet } from '@testforge/shared-types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,7 +41,7 @@ interface Generation {
 }
 type AnalysisState = 'idle' | 'loading' | 'done' | 'error';
 type GenerationState = 'idle' | 'loading' | 'done' | 'error';
-type Tab = 'analysis' | 'generation';
+type Tab = 'analysis' | 'manual-tests' | 'generation';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -56,9 +61,12 @@ export function StoryDetailPage() {
   const [pendingGenerationId, setPendingGenerationId] = useState<string | null>(null);
   const [framework, setFramework] = useState<'playwright' | 'selenium'>('playwright');
   const [language, setLanguage] = useState<'typescript' | 'javascript' | 'python' | 'java' | 'csharp'>('typescript');
+  const [linkManualTests, setLinkManualTests] = useState(true);
 
   const [activeTab, setActiveTab] = useState<Tab>('analysis');
   const [loading, setLoading] = useState(true);
+  const [manualTestSet, setManualTestSet] = useState<ManualTestSet | null>(null);
+  const [manualTestLoading, setManualTestLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -67,7 +75,16 @@ export function StoryDetailPage() {
       api.get<Analysis | null>(`/api/analyses?userStoryId=${id}`),
     ]).then(([s, a]) => {
       setStory(s);
-      if (a) { setAnalysis(a); setAnalysisState('done'); }
+      if (a) {
+        setAnalysis(a);
+        setAnalysisState('done');
+        // Charger les tests manuels existants
+        setManualTestLoading(true);
+        api.get<ManualTestSet>(`/api/analyses/${a.id}/manual-tests`)
+          .then(setManualTestSet)
+          .catch(() => setManualTestSet(null))
+          .finally(() => setManualTestLoading(false));
+      }
     }).finally(() => setLoading(false));
   }, [id]);
 
@@ -108,7 +125,11 @@ export function StoryDetailPage() {
     setGenerationError(null);
     try {
       const pending = await api.post<{ id: string; status: string }>('/api/generations', {
-        analysisId: analysis.id, useImprovedVersion: useImproved, framework, language,
+        analysisId: analysis.id,
+        useImprovedVersion: useImproved,
+        framework,
+        language,
+        ...(linkManualTests && manualTestSet?.status !== 'draft' ? { manualTestSetId: manualTestSet?.id } : {}),
       });
       setPendingGenerationId(pending.id);
     } catch (e) {
@@ -159,6 +180,14 @@ export function StoryDetailPage() {
             label="📋 Analyse & US"
             badge={analysisState === 'done' ? (analysis ? `${analysis.scoreGlobal}/100` : undefined) : undefined}
             badgeColor={analysis && analysis.scoreGlobal >= 70 ? 'green' : analysis && analysis.scoreGlobal >= 40 ? 'yellow' : 'red'}
+          />
+          <TabButton
+            active={activeTab === 'manual-tests'}
+            onClick={() => setActiveTab('manual-tests')}
+            label="📋 Tests manuels"
+            badge={manualTestSet ? `${manualTestSet.testCases.length}` : undefined}
+            badgeColor={manualTestSet?.status === 'validated' || manualTestSet?.status === 'pushed' ? 'green' : 'blue'}
+            disabled={analysisState !== 'done'}
           />
           <TabButton
             active={activeTab === 'generation'}
@@ -295,7 +324,56 @@ export function StoryDetailPage() {
           </div>
         )}
 
-        {/* ── Onglet 2 : Génération ── */}
+        {/* ── Onglet 2 : Tests manuels ── */}
+        {activeTab === 'manual-tests' && (
+          <div className="p-6 max-w-4xl space-y-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800">Tests manuels</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Générés depuis les critères d'acceptance, éditables et pushables vers Xray ou ADO.</p>
+              </div>
+              {analysis && (
+                <ManualTestGenerateButton
+                  analysisId={analysis.id}
+                  hasExisting={!!manualTestSet}
+                  onGenerated={(set) => setManualTestSet(set)}
+                />
+              )}
+            </div>
+
+            {manualTestLoading && <p className="text-sm text-gray-400">Chargement...</p>}
+
+            {!manualTestLoading && !manualTestSet && (
+              <div className="text-center py-12 text-gray-400">
+                <p className="text-3xl mb-3">📋</p>
+                <p className="text-sm">Aucun test manuel généré. Cliquez sur "Générer les tests manuels".</p>
+              </div>
+            )}
+
+            {manualTestSet && (
+              <>
+                <ManualTestList
+                  set={manualTestSet}
+                  onUpdated={setManualTestSet}
+                />
+                <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100">
+                  <ManualTestValidateButton
+                    setId={manualTestSet.id}
+                    status={manualTestSet.status}
+                    onValidated={setManualTestSet}
+                  />
+                  <ManualTestPushButton
+                    setId={manualTestSet.id}
+                    status={manualTestSet.status}
+                    onPushed={(partial) => setManualTestSet((prev) => prev ? { ...prev, ...partial } : prev)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Onglet 3 : Génération ── */}
         {activeTab === 'generation' && (
           <div className="p-6 max-w-6xl space-y-6">
 
@@ -313,6 +391,18 @@ export function StoryDetailPage() {
                   <p className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded-md">
                     ⚠️ Score faible ({analysis.scoreGlobal}/100) — résultats de qualité limitée.
                   </p>
+                )}
+
+                {manualTestSet && manualTestSet.status !== 'draft' && (
+                  <label className="flex items-start gap-1.5 text-xs text-indigo-700 bg-indigo-50 p-2 rounded-md cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={linkManualTests}
+                      onChange={(e) => setLinkManualTests(e.target.checked)}
+                      className="mt-0.5 rounded"
+                    />
+                    <span>Lier aux tests manuels validés ({manualTestSet.testCases.length} cas) — les IDs seront injectés dans le code</span>
+                  </label>
                 )}
 
                 <div className="space-y-2 pt-1">

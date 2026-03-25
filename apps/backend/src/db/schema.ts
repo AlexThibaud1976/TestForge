@@ -178,6 +178,7 @@ export const generations = pgTable('generations', {
   status: text('status').notNull().default('pending'), // 'pending' | 'success' | 'error'
   errorMessage: text('error_message'),
   durationMs: integer('duration_ms'),
+  manualTestSetId: uuid('manual_test_set_id'), // Feature 002: lien optionnel vers le lot de tests manuels
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -384,3 +385,54 @@ export const superAdmins = pgTable('super_admins', {
   userId: uuid('user_id').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ─── Feature 002: Manual Test First ──────────────────────────────────────────
+
+export const manualTestSets = pgTable('manual_test_sets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  analysisId: uuid('analysis_id').notNull().references(() => analyses.id, { onDelete: 'cascade' }),
+  teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  userStoryId: uuid('user_story_id').notNull().references(() => userStories.id),
+  status: text('status').notNull().default('draft'),           // draft | validated | pushed
+  usedImprovedVersion: boolean('used_improved_version').notNull().default(false),
+  version: integer('version').notNull().default(1),
+  excludedCriteria: jsonb('excluded_criteria').notNull().default([]),
+  llmProvider: text('llm_provider').notNull(),
+  llmModel: text('llm_model').notNull(),
+  promptVersion: text('prompt_version').notNull(),
+  validatedAt: timestamp('validated_at', { withTimezone: true }),
+  validatedBy: uuid('validated_by'),
+  pushedAt: timestamp('pushed_at', { withTimezone: true }),
+  pushTarget: text('push_target'),                             // xray | ado | null
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const manualTestSetsRelations = relations(manualTestSets, ({ one, many }) => ({
+  analysis: one(analyses, { fields: [manualTestSets.analysisId], references: [analyses.id] }),
+  team: one(teams, { fields: [manualTestSets.teamId], references: [teams.id] }),
+  userStory: one(userStories, { fields: [manualTestSets.userStoryId], references: [userStories.id] }),
+  testCases: many(manualTestCases),
+}));
+
+export const manualTestCases = pgTable('manual_test_cases', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  manualTestSetId: uuid('manual_test_set_id').notNull().references(() => manualTestSets.id, { onDelete: 'cascade' }),
+  teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  precondition: text('precondition'),
+  priority: text('priority').notNull().default('medium'),      // critical | high | medium | low
+  category: text('category').notNull().default('happy_path'),  // happy_path | error_case | edge_case | other
+  steps: jsonb('steps').notNull().default([]),                 // [{stepNumber, action, expectedResult}]
+  sortOrder: integer('sort_order').notNull().default(0),
+  externalId: text('external_id'),
+  externalUrl: text('external_url'),
+  externalSource: text('external_source'),                     // xray | ado | null
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const manualTestCasesRelations = relations(manualTestCases, ({ one }) => ({
+  testSet: one(manualTestSets, { fields: [manualTestCases.manualTestSetId], references: [manualTestSets.id] }),
+  team: one(teams, { fields: [manualTestCases.teamId], references: [teams.id] }),
+}));

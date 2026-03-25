@@ -123,6 +123,56 @@ export interface Generation {
   createdAt: string;
 }
 
+// ─── Manual Tests ─────────────────────────────────────────────────────────────
+
+export type ManualTestPriority = 'critical' | 'high' | 'medium' | 'low';
+export type ManualTestCategory = 'happy_path' | 'error_case' | 'edge_case' | 'other';
+export type ManualTestSetStatus = 'draft' | 'validated' | 'pushed';
+
+export interface ManualTestStep {
+  stepNumber: number;
+  action: string;
+  expectedResult: string;
+}
+
+export interface ManualTestCase {
+  id: string;
+  title: string;
+  precondition: string | null;
+  priority: ManualTestPriority;
+  category: ManualTestCategory;
+  steps: ManualTestStep[];
+  sortOrder: number;
+  externalId: string | null;
+  externalUrl: string | null;
+  externalSource: 'xray' | 'ado' | null;
+}
+
+export interface ExcludedCriterion {
+  criterion: string;
+  reason: string;
+}
+
+export interface ManualTestSet {
+  id: string;
+  analysisId: string;
+  teamId: string;
+  userStoryId: string;
+  status: ManualTestSetStatus;
+  usedImprovedVersion: boolean;
+  version: number;
+  testCases: ManualTestCase[];
+  excludedCriteria: ExcludedCriterion[];
+  llmProvider: string;
+  llmModel: string;
+  promptVersion: string;
+  validatedAt: string | null;
+  validatedBy: string | null;
+  pushedAt: string | null;
+  pushTarget: 'xray' | 'ado' | null;
+  createdAt: string;
+}
+
 // ─── API Responses ────────────────────────────────────────────────────────────
 
 export interface ApiError {

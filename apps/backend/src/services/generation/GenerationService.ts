@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { analyses, generations, generatedFiles, llmConfigs, userStories, pomTemplates } from '../../db/schema.js';
+import { analyses, generations, generatedFiles, llmConfigs, userStories, pomTemplates, manualTestSets, manualTestCases } from '../../db/schema.js';
 import { createLLMClient } from '../llm/index.js';
 import { decrypt } from '../../utils/encryption.js';
 import { getPrompt } from './prompts/registry.js';
@@ -46,6 +46,7 @@ export class GenerationService {
     useImprovedVersion: boolean,
     framework = 'playwright',
     language = 'typescript',
+    manualTestSetId?: string | null,
   ): Promise<{ id: string; analysisId: string; status: string }> {
     const analysis = await db.query.analyses.findFirst({
       where: and(eq(analyses.id, analysisId), eq(analyses.teamId, teamId)),
@@ -71,6 +72,7 @@ export class GenerationService {
         llmModel: llmConfig.model,
         promptVersion: prompt.version,
         status: 'pending',
+        manualTestSetId: manualTestSetId ?? null,
       })
       .returning();
 
@@ -89,6 +91,7 @@ export class GenerationService {
     useImprovedVersion: boolean,
     framework: string,
     language: string,
+    manualTestSetId?: string | null,
   ): Promise<void> {
     const startTime = Date.now();
 
@@ -125,9 +128,18 @@ export class GenerationService {
         ...(llmConfig.ollamaEndpoint ? { ollamaEndpoint: llmConfig.ollamaEndpoint } : {}),
       });
 
+      // V Feature 002: Injecter les tests manuels validés si fournis
+      const manualTestsSection = manualTestSetId
+        ? await this.buildManualTestsSection(manualTestSetId)
+        : null;
+
+      const finalSystemPrompt = manualTestsSection
+        ? `${systemPromptWithTemplate}\n\n${manualTestsSection}`
+        : systemPromptWithTemplate;
+
       const response = await client.complete(
         [
-          { role: 'system', content: systemPromptWithTemplate },
+          { role: 'system', content: finalSystemPrompt },
           {
             role: 'user',
             content: prompt.buildUserPrompt(
@@ -199,6 +211,41 @@ export class GenerationService {
       zip.file(file.filename, file.content);
     }
     return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+  }
+
+  /** Feature 002: Construit la section "Linked Manual Test Cases" pour le prompt */
+  private async buildManualTestsSection(manualTestSetId: string): Promise<string | null> {
+    try {
+      const cases = await db
+        .select()
+        .from(manualTestCases)
+        .where(eq(manualTestCases.manualTestSetId, manualTestSetId))
+        .orderBy(manualTestCases.sortOrder);
+
+      if (cases.length === 0) return null;
+
+      const lines: string[] = ['## Linked Manual Test Cases', ''];
+      lines.push('The generated tests MUST reference these manual test IDs:');
+      lines.push('');
+
+      for (const tc of cases) {
+        const id = tc.externalId ?? tc.id;
+        lines.push(`Test Case: ${id} - ${tc.title}`);
+        const steps = (tc.steps ?? []) as Array<{ stepNumber: number; action: string; expectedResult: string }>;
+        for (const s of steps) {
+          lines.push(`  Step ${s.stepNumber}: ${s.action} → ${s.expectedResult}`);
+        }
+        lines.push('');
+      }
+
+      lines.push('In the generated test spec, for each test case:');
+      lines.push('- Add the ID as a describe/test tag: e.g., test.describe(\'@XRAY-123\') or @Tag(\'XRAY-123\')');
+      lines.push('- Reference the ID in a comment at the top of the test function');
+
+      return lines.join('\n');
+    } catch {
+      return null;
+    }
   }
 
   // V2: récupère le template POM de l'équipe pour un combo framework+language

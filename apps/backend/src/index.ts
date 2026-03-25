@@ -50,6 +50,7 @@ const v2Routes: Array<{ path: string; name: string }> = [
   { path: './routes/xray.js', name: '/api/xray-configs' },
   { path: './routes/pom-templates.js', name: '/api/pom-templates' },
   { path: './routes/admin.js', name: '/api/admin' },
+  { path: './routes/manual-tests.js', name: '/api (manual-tests)' },
 ];
 
 for (const { path: routePath, name } of v2Routes) {
