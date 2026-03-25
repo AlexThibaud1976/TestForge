@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { useAuth } from '../hooks/useAuth.js';
+import { api } from '../lib/api.js';
 
 interface Props {
   generationId: string;
 }
 
 export function ADOTestCaseButton({ generationId }: Props) {
-  const { session } = useAuth();
   const [creating, setCreating] = useState(false);
   const [testCaseId, setTestCaseId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -14,21 +13,13 @@ export function ADOTestCaseButton({ generationId }: Props) {
   const handleCreate = async () => {
     setCreating(true);
     setError(null);
-    const res = await fetch(`/api/generations/${generationId}/ado-test-case`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({}),
-    });
-    setCreating(false);
-    if (res.ok) {
-      const data = await res.json();
+    try {
+      const data = await api.post<{ testCaseId: number }>(`/generations/${generationId}/ado-test-case`, {});
       setTestCaseId(data.testCaseId);
-    } else {
-      const data = await res.json();
-      setError(data.error ?? 'Erreur lors de la création du Test Case ADO');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la création du Test Case ADO');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -43,7 +34,7 @@ export function ADOTestCaseButton({ generationId }: Props) {
   return (
     <div>
       <button
-        onClick={handleCreate}
+        onClick={() => void handleCreate()}
         disabled={creating}
         className="flex items-center gap-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
       >

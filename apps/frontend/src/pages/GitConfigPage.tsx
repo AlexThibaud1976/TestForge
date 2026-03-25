@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth.js';
+import { api } from '../lib/api.js';
 
 interface GitConfig {
   id: string;
@@ -17,7 +17,6 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 export function GitConfigPage() {
-  const { session } = useAuth();
   const [configs, setConfigs] = useState<GitConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -30,47 +29,51 @@ export function GitConfigPage() {
   });
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
-
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${session?.access_token}`,
-  };
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/git-configs', { headers })
-      .then((r) => r.json())
+    api.get<GitConfig[]>('/git-configs')
       .then(setConfigs)
+      .catch(() => setConfigs([]))
       .finally(() => setLoading(false));
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/git-configs', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      const created = await res.json();
+    setSaveError(null);
+    try {
+      const created = await api.post<GitConfig>('/git-configs', form);
       setConfigs((prev) => [...prev, created]);
       setShowForm(false);
       setForm({ provider: 'github', name: '', repoUrl: '', token: '', defaultBranch: 'main' });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement');
     }
   };
 
   const handleTest = async (id: string) => {
     setTesting(id);
     setTestResult(null);
-    const res = await fetch(`/api/git-configs/${id}/test`, { method: 'POST', headers });
-    const data = await res.json();
-    setTestResult(res.ok ? `✅ ${data.repoName} (branche: ${data.defaultBranch})` : `❌ ${data.error}`);
-    setTesting(null);
+    try {
+      const data = await api.post<{ ok: boolean; repoName: string; defaultBranch: string }>(
+        `/git-configs/${id}/test`, {},
+      );
+      setTestResult(`✅ ${data.repoName} (branche: ${data.defaultBranch})`);
+    } catch (err) {
+      setTestResult(`❌ ${err instanceof Error ? err.message : 'Erreur de connexion'}`);
+    } finally {
+      setTesting(null);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Supprimer cette configuration Git ?')) return;
-    await fetch(`/api/git-configs/${id}`, { method: 'DELETE', headers });
-    setConfigs((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await api.delete(`/git-configs/${id}`);
+      setConfigs((prev) => prev.filter((c) => c.id !== id));
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -78,7 +81,7 @@ export function GitConfigPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Configurations Git</h1>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => { setShowForm(true); setSaveError(null); }}
           className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
         >
           + Nouveau repo
@@ -86,7 +89,7 @@ export function GitConfigPage() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
+        <form onSubmit={(e) => void handleCreate(e)} className="bg-white border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
           <h2 className="font-semibold text-gray-900">Ajouter un repo Git</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -146,6 +149,7 @@ export function GitConfigPage() {
               />
             </div>
           </div>
+          {saveError && <p className="text-sm text-red-600">❌ {saveError}</p>}
           <div className="flex gap-3">
             <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
               Enregistrer
@@ -176,14 +180,14 @@ export function GitConfigPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleTest(config.id)}
+                  onClick={() => void handleTest(config.id)}
                   disabled={testing === config.id}
                   className="text-xs text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded px-2 py-1"
                 >
                   {testing === config.id ? 'Test...' : 'Tester'}
                 </button>
                 <button
-                  onClick={() => handleDelete(config.id)}
+                  onClick={() => void handleDelete(config.id)}
                   className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-1"
                 >
                   Supprimer

@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { useAuth } from '../hooks/useAuth.js';
+import { api } from '../lib/api.js';
 
 interface Props {
   generationId: string;
 }
 
 export function XrayTestButton({ generationId }: Props) {
-  const { session } = useAuth();
   const [creating, setCreating] = useState(false);
   const [testKey, setTestKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -14,21 +13,13 @@ export function XrayTestButton({ generationId }: Props) {
   const handleCreate = async () => {
     setCreating(true);
     setError(null);
-    const res = await fetch(`/api/generations/${generationId}/xray`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({}),
-    });
-    setCreating(false);
-    if (res.ok) {
-      const data = await res.json();
+    try {
+      const data = await api.post<{ xrayTestKey: string }>(`/generations/${generationId}/xray`, {});
       setTestKey(data.xrayTestKey);
-    } else {
-      const data = await res.json();
-      setError(data.error ?? 'Erreur lors de la création du test Xray');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la création du test Xray');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -43,7 +34,7 @@ export function XrayTestButton({ generationId }: Props) {
   return (
     <div>
       <button
-        onClick={handleCreate}
+        onClick={() => void handleCreate()}
         disabled={creating}
         className="flex items-center gap-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
       >

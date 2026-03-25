@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth.js';
+import { api } from '../lib/api.js';
 
 interface PomTemplate {
   id: string;
@@ -13,48 +13,38 @@ const FRAMEWORKS = ['playwright', 'selenium', 'cypress'];
 const LANGUAGES = ['typescript', 'javascript', 'python', 'java', 'csharp', 'ruby', 'kotlin'];
 
 export function PomTemplatesPage() {
-  const { session } = useAuth();
   const [templates, setTemplates] = useState<PomTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ framework: 'playwright', language: 'typescript', content: '' });
   const [saving, setSaving] = useState(false);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${session?.access_token}`,
-  };
-
   useEffect(() => {
-    fetch('/api/pom-templates', { headers })
-      .then((r) => r.json())
+    api.get<PomTemplate[]>('/pom-templates')
       .then(setTemplates)
+      .catch(() => setTemplates([]))
       .finally(() => setLoading(false));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const res = await fetch('/api/pom-templates', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(form),
-    });
-    setSaving(false);
-    if (res.ok) {
-      const created = await res.json();
+    try {
+      const created = await api.post<PomTemplate>('/pom-templates', form);
       setTemplates((prev) => {
         const filtered = prev.filter((t) => !(t.framework === form.framework && t.language === form.language));
         return [...filtered, created];
       });
       setShowForm(false);
       setForm({ framework: 'playwright', language: 'typescript', content: '' });
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Supprimer ce template ?')) return;
-    await fetch(`/api/pom-templates/${id}`, { method: 'DELETE', headers });
+    await api.delete(`/pom-templates/${id}`).catch(() => null);
     setTemplates((prev) => prev.filter((t) => t.id !== id));
   };
 

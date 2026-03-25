@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth.js';
+import { api } from '../lib/api.js';
 
 interface GitConfig {
   id: string;
   name: string;
   provider: string;
-  defaultBranch: string;
 }
 
 interface PushResult {
@@ -20,44 +19,40 @@ interface Props {
 }
 
 export function GitPushButton({ generationId }: Props) {
-  const { session } = useAuth();
   const [configs, setConfigs] = useState<GitConfig[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState('');
   const [mode, setMode] = useState<'commit' | 'pr'>('pr');
   const [pushing, setPushing] = useState(false);
   const [result, setResult] = useState<PushResult | null>(null);
-
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${session?.access_token}`,
-  };
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (showDialog && configs.length === 0) {
-      fetch('/api/git-configs', { headers })
-        .then((r) => r.json())
-        .then((data: GitConfig[]) => {
+      api.get<GitConfig[]>('/git-configs')
+        .then((data) => {
           setConfigs(data);
           if (data.length > 0) setSelectedConfig(data[0]!.id);
-        });
+        })
+        .catch(() => setConfigs([]));
     }
   }, [showDialog]);
 
   const handlePush = async () => {
     if (!selectedConfig) return;
     setPushing(true);
-    const res = await fetch(`/api/generations/${generationId}/push`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ gitConfigId: selectedConfig, mode }),
-    });
-    const data = await res.json();
-    setPushing(false);
-    if (res.ok) {
+    setError(null);
+    try {
+      const data = await api.post<PushResult>(`/generations/${generationId}/push`, {
+        gitConfigId: selectedConfig,
+        mode,
+      });
       setResult(data);
-    } else {
-      setResult({ branchName: '', status: 'error', commitSha: data.error });
+      setShowDialog(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du push');
+    } finally {
+      setPushing(false);
     }
   };
 
@@ -93,9 +88,7 @@ export function GitPushButton({ generationId }: Props) {
             {configs.length === 0 ? (
               <p className="text-sm text-gray-500">
                 Aucun repo configuré.{' '}
-                <a href="/settings/git" className="text-indigo-600 underline">
-                  Configurer un repo →
-                </a>
+                <a href="/settings/git" className="text-indigo-600 underline">Configurer un repo →</a>
               </p>
             ) : (
               <div className="space-y-4">
@@ -124,21 +117,16 @@ export function GitPushButton({ generationId }: Props) {
                     </label>
                   </div>
                 </div>
-                {result?.status === 'error' && (
-                  <p className="text-sm text-red-600">❌ {result.commitSha}</p>
-                )}
+                {error && <p className="text-sm text-red-600">❌ {error}</p>}
                 <div className="flex gap-3 pt-2">
                   <button
-                    onClick={handlePush}
+                    onClick={() => void handlePush()}
                     disabled={pushing}
                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
                   >
                     {pushing ? 'Push en cours...' : 'Pousser'}
                   </button>
-                  <button
-                    onClick={() => setShowDialog(false)}
-                    className="text-gray-600 px-4 py-2 text-sm hover:text-gray-900"
-                  >
+                  <button onClick={() => setShowDialog(false)} className="text-gray-600 px-4 py-2 text-sm hover:text-gray-900">
                     Annuler
                   </button>
                 </div>

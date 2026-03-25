@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth.js';
+import { api } from '../lib/api.js';
 
 interface TeamRow {
   id: string;
@@ -20,35 +20,28 @@ interface Stats {
 }
 
 export function SuperAdminPage() {
-  const { session } = useAuth();
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${session?.access_token}`,
-  };
-
   useEffect(() => {
     Promise.all([
-      fetch('/api/admin/teams', { headers }).then((r) => r.json()),
-      fetch('/api/admin/stats', { headers }).then((r) => r.json()),
+      api.get<{ data: TeamRow[] }>('/admin/teams'),
+      api.get<Stats>('/admin/stats'),
     ])
       .then(([teamsRes, statsRes]) => {
-        if (teamsRes.error) { setError(teamsRes.error); return; }
         setTeams(teamsRes.data ?? []);
         setStats(statsRes);
       })
-      .catch((e) => setError(String(e)))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, []);
 
   const handleSuspend = async (id: string, suspended: boolean) => {
     const action = suspended ? 'reactivate' : 'suspend';
     if (!confirm(`${suspended ? 'Réactiver' : 'Suspendre'} ce compte ?`)) return;
-    await fetch(`/api/admin/teams/${id}/${action}`, { method: 'POST', headers });
+    await api.post(`/admin/teams/${id}/${action}`, {}).catch(() => null);
     setTeams((prev) =>
       prev.map((t) => (t.id === id ? { ...t, suspendedAt: suspended ? null : new Date().toISOString() } : t)),
     );
