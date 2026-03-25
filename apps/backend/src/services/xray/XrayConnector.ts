@@ -81,7 +81,14 @@ export class XrayConnector {
     let testKey: string;
 
     if (definition.jiraBaseUrl && definition.jiraAuthHeader) {
-      // Approche fiable : créer l'issue Jira de type "Test" via l'API Jira standard
+      // Résoudre le bon type d'issue Xray (peut s'appeler "Test", "Xray Test", etc. selon l'instance)
+      const testIssueTypeName = await this.findXrayTestIssueType(
+        definition.jiraBaseUrl,
+        definition.jiraAuthHeader,
+        definition.projectKey,
+      );
+
+      // Créer l'issue Jira de type Test via l'API Jira standard
       const issueRes = await fetch(`${definition.jiraBaseUrl}/rest/api/3/issue`, {
         method: 'POST',
         headers: {
@@ -93,7 +100,7 @@ export class XrayConnector {
           fields: {
             project: { key: definition.projectKey },
             summary: definition.summary,
-            issuetype: { name: 'Test' },
+            issuetype: { name: testIssueTypeName },
           },
         }),
       });
@@ -151,6 +158,33 @@ export class XrayConnector {
     }
 
     return { testId, testKey };
+  }
+
+  /** Trouve le nom du type d'issue Jira utilisé par Xray pour les tests (Test, Xray Test, etc.) */
+  private async findXrayTestIssueType(jiraBaseUrl: string, authHeader: string, projectKey: string): Promise<string> {
+    try {
+      const res = await fetch(
+        `${jiraBaseUrl}/rest/api/3/issue/createmeta?projectKeys=${projectKey}&expand=projects.issuetypes`,
+        { headers: { Authorization: authHeader, Accept: 'application/json' } },
+      );
+      if (!res.ok) return 'Test'; // fallback
+
+      const meta = await res.json() as { projects?: Array<{ issuetypes?: Array<{ name: string }> }> };
+      const types = meta.projects?.[0]?.issuetypes?.map((t) => t.name) ?? [];
+
+      // Chercher dans l'ordre : Test, Xray Test, puis tout type contenant "test"
+      const candidates = ['Test', 'Xray Test', 'XrayTest'];
+      for (const candidate of candidates) {
+        if (types.includes(candidate)) return candidate;
+      }
+      const testType = types.find((t) => t.toLowerCase().includes('test'));
+      if (testType) return testType;
+
+      console.warn(`[Xray] No test issue type found in project ${projectKey}. Available: ${types.join(', ')}. Using "Test".`);
+      return 'Test';
+    } catch {
+      return 'Test';
+    }
   }
 
   private async linkToRequirement(testKey: string, requirementKey: string, token: string): Promise<void> {
