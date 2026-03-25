@@ -28,6 +28,16 @@ const createSchema = z.discriminatedUnion('provider', [
     azureEndpoint: z.string().url(),
     azureDeployment: z.string().min(1),
   }),
+  z.object({
+    provider: z.literal('mistral'),
+    model: z.string().default('mistral-large-latest'),
+    apiKey: z.string().min(1),
+  }),
+  z.object({
+    provider: z.literal('ollama'),
+    model: z.string().min(1),
+    ollamaEndpoint: z.string().url(),
+  }),
 ]);
 
 // GET /api/llm-configs
@@ -40,6 +50,7 @@ router.get('/', requireAuth, async (req: Request, res) => {
       model: llmConfigs.model,
       azureEndpoint: llmConfigs.azureEndpoint,
       azureDeployment: llmConfigs.azureDeployment,
+      ollamaEndpoint: llmConfigs.ollamaEndpoint,
       isDefault: llmConfigs.isDefault,
       createdAt: llmConfigs.createdAt,
     })
@@ -66,15 +77,19 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res) => {
   });
   const isDefault = !existing;
 
+  // Ollama n'a pas de clé API — on stocke un placeholder
+  const apiKeyToEncrypt = 'apiKey' in data ? data.apiKey : 'ollama-local';
+
   const [created] = await db
     .insert(llmConfigs)
     .values({
       teamId,
       provider: data.provider,
       model: data.model,
-      encryptedApiKey: encrypt(data.apiKey),
+      encryptedApiKey: encrypt(apiKeyToEncrypt),
       azureEndpoint: 'azureEndpoint' in data ? data.azureEndpoint : null,
       azureDeployment: 'azureDeployment' in data ? data.azureDeployment : null,
+      ollamaEndpoint: 'ollamaEndpoint' in data ? data.ollamaEndpoint : null,
       isDefault,
     })
     .returning();
@@ -85,6 +100,7 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res) => {
     model: created?.model,
     azureEndpoint: created?.azureEndpoint,
     azureDeployment: created?.azureDeployment,
+    ollamaEndpoint: created?.ollamaEndpoint,
     isDefault: created?.isDefault,
     createdAt: created?.createdAt,
   });
@@ -104,11 +120,12 @@ router.post('/:id/test', requireAuth, requireAdmin, async (req: Request, res) =>
 
   try {
     const client = createLLMClient({
-      provider: config.provider as 'openai' | 'azure_openai' | 'anthropic',
+      provider: config.provider as 'openai' | 'azure_openai' | 'anthropic' | 'mistral' | 'ollama',
       model: config.model,
       apiKey: decrypt(config.encryptedApiKey),
       ...(config.azureEndpoint ? { azureEndpoint: config.azureEndpoint } : {}),
       ...(config.azureDeployment ? { azureDeployment: config.azureDeployment } : {}),
+      ...(config.ollamaEndpoint ? { ollamaEndpoint: config.ollamaEndpoint } : {}),
     });
 
     await client.complete([{ role: 'user', content: 'Reply with just the word OK.' }], {

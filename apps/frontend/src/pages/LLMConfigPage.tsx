@@ -1,23 +1,28 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 
+type Provider = 'openai' | 'azure_openai' | 'anthropic' | 'mistral' | 'ollama';
+
 interface LLMConfig {
   id: string;
-  provider: 'openai' | 'azure_openai' | 'anthropic';
+  provider: Provider;
   model: string;
   azureEndpoint: string | null;
   azureDeployment: string | null;
+  ollamaEndpoint: string | null;
   isDefault: boolean;
   createdAt: string;
 }
 
-const PROVIDER_LABELS: Record<string, string> = {
+const PROVIDER_LABELS: Record<Provider, string> = {
   openai: 'OpenAI',
   anthropic: 'Anthropic (Claude)',
   azure_openai: 'Azure OpenAI',
+  mistral: 'Mistral AI',
+  ollama: 'Ollama (local)',
 };
 
-const PROVIDER_MODELS: Record<string, { id: string; label: string }[]> = {
+const PROVIDER_MODELS: Record<Provider, { id: string; label: string }[]> = {
   openai: [
     { id: 'gpt-4o',       label: 'GPT-4o' },
     { id: 'gpt-4o-mini',  label: 'GPT-4o mini' },
@@ -31,7 +36,12 @@ const PROVIDER_MODELS: Record<string, { id: string; label: string }[]> = {
     { id: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
     { id: 'claude-3-5-haiku-20241022',  label: 'Claude 3.5 Haiku' },
   ],
-  azure_openai: [], // deployment name libre
+  azure_openai: [],
+  mistral: [
+    { id: 'mistral-large-latest', label: 'Mistral Large (recommandé)' },
+    { id: 'mistral-small-latest', label: 'Mistral Small' },
+  ],
+  ollama: [], // modèle libre (nom local)
 };
 
 export function LLMConfigPage() {
@@ -123,6 +133,9 @@ export function LLMConfigPage() {
                   {config.azureEndpoint && (
                     <p className="text-xs text-gray-400 mt-1">{config.azureEndpoint}</p>
                   )}
+                  {config.ollamaEndpoint && (
+                    <p className="text-xs text-gray-400 mt-1">{config.ollamaEndpoint}</p>
+                  )}
                   {testResult[config.id] !== undefined && (
                     <p className={`text-xs mt-1 ${testResult[config.id] === true ? 'text-green-600' : 'text-red-600'}`}>
                       {testResult[config.id] === true ? '✓ Connexion OK' : `✗ ${String(testResult[config.id])}`}
@@ -177,15 +190,16 @@ export function LLMConfigPage() {
 }
 
 function LLMForm({ onCreated, onCancel }: { onCreated: (c: LLMConfig) => void; onCancel: () => void }) {
-  const [provider, setProvider] = useState<'openai' | 'anthropic' | 'azure_openai'>('openai');
+  const [provider, setProvider] = useState<Provider>('openai');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState(PROVIDER_MODELS['openai']?.[0]?.id ?? 'gpt-4o');
   const [azureEndpoint, setAzureEndpoint] = useState('');
   const [azureDeployment, setAzureDeployment] = useState('');
+  const [ollamaEndpoint, setOllamaEndpoint] = useState('http://localhost:11434');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleProviderChange = (p: typeof provider) => {
+  const handleProviderChange = (p: Provider) => {
     setProvider(p);
     setModel(PROVIDER_MODELS[p]?.[0]?.id ?? '');
   };
@@ -195,9 +209,14 @@ function LLMForm({ onCreated, onCancel }: { onCreated: (c: LLMConfig) => void; o
     setError(null);
     setLoading(true);
     try {
-      const body = provider === 'azure_openai'
-        ? { provider, model, apiKey, azureEndpoint, azureDeployment }
-        : { provider, model, apiKey };
+      let body: Record<string, string>;
+      if (provider === 'azure_openai') {
+        body = { provider, model, apiKey, azureEndpoint, azureDeployment };
+      } else if (provider === 'ollama') {
+        body = { provider, model, ollamaEndpoint };
+      } else {
+        body = { provider, model, apiKey };
+      }
       const config = await api.post<LLMConfig>('/api/llm-configs', body);
       onCreated(config);
     } catch (err) {
@@ -207,16 +226,20 @@ function LLMForm({ onCreated, onCancel }: { onCreated: (c: LLMConfig) => void; o
     }
   };
 
+  const hasApiKey = provider !== 'ollama';
+  const hasModelInput = provider === 'azure_openai' || provider === 'ollama';
+  const models = PROVIDER_MODELS[provider] ?? [];
+
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 space-y-3">
       <h3 className="text-sm font-semibold text-gray-800">Nouveau provider LLM</h3>
-      <div className="grid grid-cols-3 gap-2">
-        {(['openai', 'anthropic', 'azure_openai'] as const).map((p) => (
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+        {(['openai', 'anthropic', 'azure_openai', 'mistral', 'ollama'] as const).map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => handleProviderChange(p)}
-            className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${provider === p ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+            className={`px-2 py-2 text-xs font-medium rounded-md border transition-colors ${provider === p ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
           >
             {PROVIDER_LABELS[p]}
           </button>
@@ -225,25 +248,34 @@ function LLMForm({ onCreated, onCancel }: { onCreated: (c: LLMConfig) => void; o
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Modèle</label>
-          {provider === 'azure_openai' ? (
+          {hasModelInput ? (
             <input type="text" required value={model} onChange={(e) => setModel(e.target.value)}
-              placeholder="Deployment name (ex: my-gpt4o)"
+              placeholder={provider === 'ollama' ? 'llama3:8b, mistral, ...' : 'Deployment name'}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
           ) : (
             <select required value={model} onChange={(e) => setModel(e.target.value)}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-              {(PROVIDER_MODELS[provider] ?? []).map((m) => (
+              {models.map((m) => (
                 <option key={m.id} value={m.id}>{m.label}</option>
               ))}
             </select>
           )}
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">API Key</label>
-          <input type="password" required value={apiKey} onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-..."
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
+        {hasApiKey ? (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">API Key</label>
+            <input type="password" required value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+              placeholder={provider === 'mistral' ? 'Clé API Mistral...' : 'sk-...'}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        ) : (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">URL Ollama</label>
+            <input type="url" required value={ollamaEndpoint} onChange={(e) => setOllamaEndpoint(e.target.value)}
+              placeholder="http://localhost:11434"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        )}
         {provider === 'azure_openai' && (
           <>
             <div>
@@ -285,6 +317,7 @@ function LLMEditForm({ config, onUpdated, onCancel }: {
   const [apiKey, setApiKey] = useState('');
   const [azureEndpoint, setAzureEndpoint] = useState(config.azureEndpoint ?? '');
   const [azureDeployment, setAzureDeployment] = useState(config.azureDeployment ?? '');
+  const [ollamaEndpoint, setOllamaEndpoint] = useState(config.ollamaEndpoint ?? 'http://localhost:11434');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -298,6 +331,9 @@ function LLMEditForm({ config, onUpdated, onCancel }: {
       if (config.provider === 'azure_openai') {
         if (azureEndpoint) body['azureEndpoint'] = azureEndpoint;
         if (azureDeployment) body['azureDeployment'] = azureDeployment;
+      }
+      if (config.provider === 'ollama' && ollamaEndpoint) {
+        body['ollamaEndpoint'] = ollamaEndpoint;
       }
       const updated = await api.patch<LLMConfig>(`/api/llm-configs/${config.id}`, body);
       onUpdated(updated);
@@ -346,6 +382,14 @@ function LLMEditForm({ config, onUpdated, onCancel }: {
                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </>
+        )}
+        {config.provider === 'ollama' && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">URL Ollama</label>
+            <input type="url" value={ollamaEndpoint} onChange={(e) => setOllamaEndpoint(e.target.value)}
+              placeholder="http://localhost:11434"
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
         )}
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
