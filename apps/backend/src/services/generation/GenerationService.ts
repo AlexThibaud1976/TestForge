@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { analyses, generations, generatedFiles, llmConfigs, userStories } from '../../db/schema.js';
+import { analyses, generations, generatedFiles, llmConfigs, userStories, pomTemplates } from '../../db/schema.js';
 import { createLLMClient } from '../llm/index.js';
 import { decrypt } from '../../utils/encryption.js';
 import { getPrompt } from './prompts/registry.js';
@@ -13,6 +13,9 @@ export interface GeneratedFileResult {
   filename: string;
   content: string;
 }
+
+// Alias used by Git adapters
+export type GeneratedFile = GeneratedFileResult;
 
 export interface GenerationResult {
   id: string;
@@ -106,17 +109,25 @@ export class GenerationService {
       if (!llmConfig) throw new Error('No LLM config found');
 
       const prompt = getPrompt(framework, language);
+
+      // V2: injecter le template POM de l'équipe si disponible
+      const pomTemplate = await this.getPomTemplate(teamId, framework, language);
+      const systemPromptWithTemplate = pomTemplate
+        ? `${prompt.systemPrompt}\n\n## Team POM Template\n\nUtilise ce template comme base pour les Page Objects :\n\`\`\`\n${pomTemplate}\n\`\`\``
+        : prompt.systemPrompt;
+
       const client = createLLMClient({
-        provider: llmConfig.provider as 'openai' | 'azure_openai' | 'anthropic',
+        provider: llmConfig.provider as 'openai' | 'azure_openai' | 'anthropic' | 'mistral' | 'ollama',
         model: llmConfig.model,
         apiKey: decrypt(llmConfig.encryptedApiKey),
         ...(llmConfig.azureEndpoint ? { azureEndpoint: llmConfig.azureEndpoint } : {}),
         ...(llmConfig.azureDeployment ? { azureDeployment: llmConfig.azureDeployment } : {}),
+        ...(llmConfig.ollamaEndpoint ? { ollamaEndpoint: llmConfig.ollamaEndpoint } : {}),
       });
 
       const response = await client.complete(
         [
-          { role: 'system', content: prompt.systemPrompt },
+          { role: 'system', content: systemPromptWithTemplate },
           {
             role: 'user',
             content: prompt.buildUserPrompt(
@@ -188,6 +199,16 @@ export class GenerationService {
       zip.file(file.filename, file.content);
     }
     return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+  }
+
+  // V2: récupère le template POM de l'équipe pour un combo framework+language
+  async getPomTemplate(teamId: string, framework: string, language: string): Promise<string | null> {
+    const [template] = await db
+      .select({ content: pomTemplates.content })
+      .from(pomTemplates)
+      .where(and(eq(pomTemplates.teamId, teamId), eq(pomTemplates.framework, framework), eq(pomTemplates.language, language)))
+      .limit(1);
+    return template?.content ?? null;
   }
 
   /** Parse robuste de la réponse JSON du LLM */

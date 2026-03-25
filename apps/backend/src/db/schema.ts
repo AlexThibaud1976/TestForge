@@ -9,6 +9,7 @@ import {
   jsonb,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+// V2 additions use the same imports above
 import { relations } from 'drizzle-orm';
 
 // ─── Teams ────────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ export const teams = pgTable('teams', {
   plan: text('plan').notNull().default('trial'), // 'trial' | 'starter' | 'pro'
   trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }),
   stripeCustomerId: text('stripe_customer_id'),
+  suspendedAt: timestamp('suspended_at', { withTimezone: true }), // V2: null = active
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -61,6 +63,7 @@ export const llmConfigs = pgTable(
     encryptedApiKey: text('encrypted_api_key').notNull(),
     azureEndpoint: text('azure_endpoint'),
     azureDeployment: text('azure_deployment'),
+    ollamaEndpoint: text('ollama_endpoint'), // V2: URL du serveur Ollama local
     isDefault: boolean('is_default').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -213,5 +216,168 @@ export const invitations = pgTable('invitations', {
   token: text('token').notNull().unique(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── V2: Git Configs ──────────────────────────────────────────────────────────
+
+export const gitConfigs = pgTable('git_configs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamId: uuid('team_id')
+    .notNull()
+    .references(() => teams.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(), // 'github' | 'gitlab' | 'azure_repos'
+  name: text('name').notNull(),
+  repoUrl: text('repo_url').notNull(),
+  encryptedToken: text('encrypted_token').notNull(),
+  defaultBranch: text('default_branch').notNull().default('main'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const gitConfigsRelations = relations(gitConfigs, ({ one, many }) => ({
+  team: one(teams, { fields: [gitConfigs.teamId], references: [teams.id] }),
+  pushes: many(gitPushes),
+}));
+
+// ─── V2: Git Pushes ───────────────────────────────────────────────────────────
+
+export const gitPushes = pgTable('git_pushes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  generationId: uuid('generation_id')
+    .notNull()
+    .references(() => generations.id, { onDelete: 'cascade' }),
+  gitConfigId: uuid('git_config_id').references(() => gitConfigs.id, { onDelete: 'set null' }),
+  teamId: uuid('team_id').notNull().references(() => teams.id),
+  mode: text('mode').notNull(), // 'commit' | 'pr'
+  branchName: text('branch_name').notNull(),
+  commitSha: text('commit_sha'),
+  prUrl: text('pr_url'),
+  status: text('status').notNull().default('pending'), // 'pending' | 'success' | 'error'
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const gitPushesRelations = relations(gitPushes, ({ one }) => ({
+  generation: one(generations, { fields: [gitPushes.generationId], references: [generations.id] }),
+  gitConfig: one(gitConfigs, { fields: [gitPushes.gitConfigId], references: [gitConfigs.id] }),
+  team: one(teams, { fields: [gitPushes.teamId], references: [teams.id] }),
+}));
+
+// ─── V2: Writeback History ────────────────────────────────────────────────────
+
+export const writebackHistory = pgTable('writeback_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  analysisId: uuid('analysis_id')
+    .notNull()
+    .references(() => analyses.id, { onDelete: 'cascade' }),
+  userStoryId: uuid('user_story_id').references(() => userStories.id),
+  teamId: uuid('team_id').notNull().references(() => teams.id),
+  contentBefore: text('content_before').notNull(),
+  contentAfter: text('content_after').notNull(),
+  sourceType: text('source_type').notNull(), // 'jira' | 'azure_devops'
+  pushedBy: uuid('pushed_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const writebackHistoryRelations = relations(writebackHistory, ({ one }) => ({
+  analysis: one(analyses, { fields: [writebackHistory.analysisId], references: [analyses.id] }),
+  userStory: one(userStories, { fields: [writebackHistory.userStoryId], references: [userStories.id] }),
+  team: one(teams, { fields: [writebackHistory.teamId], references: [teams.id] }),
+}));
+
+// ─── V2: Xray Configs ─────────────────────────────────────────────────────────
+
+export const xrayConfigs = pgTable(
+  'xray_configs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    teamId: uuid('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    projectKey: text('project_key').notNull(),
+    encryptedCredentials: text('encrypted_credentials').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    oneXrayConfigPerTeam: uniqueIndex('one_xray_config_per_team').on(table.teamId),
+  }),
+);
+
+export const xrayConfigsRelations = relations(xrayConfigs, ({ one }) => ({
+  team: one(teams, { fields: [xrayConfigs.teamId], references: [teams.id] }),
+}));
+
+// ─── V2: Xray Tests ───────────────────────────────────────────────────────────
+
+export const xrayTests = pgTable('xray_tests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  generationId: uuid('generation_id')
+    .notNull()
+    .references(() => generations.id, { onDelete: 'cascade' }),
+  teamId: uuid('team_id').notNull().references(() => teams.id),
+  xrayTestId: text('xray_test_id').notNull(),
+  xrayTestKey: text('xray_test_key').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const xrayTestsRelations = relations(xrayTests, ({ one }) => ({
+  generation: one(generations, { fields: [xrayTests.generationId], references: [generations.id] }),
+  team: one(teams, { fields: [xrayTests.teamId], references: [teams.id] }),
+}));
+
+// ─── V2: ADO Test Cases ───────────────────────────────────────────────────────
+
+export const adoTestCases = pgTable('ado_test_cases', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  generationId: uuid('generation_id')
+    .notNull()
+    .references(() => generations.id, { onDelete: 'cascade' }),
+  teamId: uuid('team_id').notNull().references(() => teams.id),
+  testCaseId: integer('test_case_id').notNull(),
+  testSuiteId: integer('test_suite_id'),
+  testPlanId: integer('test_plan_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const adoTestCasesRelations = relations(adoTestCases, ({ one }) => ({
+  generation: one(generations, { fields: [adoTestCases.generationId], references: [generations.id] }),
+  team: one(teams, { fields: [adoTestCases.teamId], references: [teams.id] }),
+}));
+
+// ─── V2: POM Templates ────────────────────────────────────────────────────────
+
+export const pomTemplates = pgTable(
+  'pom_templates',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    teamId: uuid('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    framework: text('framework').notNull(),
+    language: text('language').notNull(),
+    content: text('content').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    oneTemplatePerTeamFrameworkLanguage: uniqueIndex('one_pom_template_per_team_framework_language').on(
+      table.teamId,
+      table.framework,
+      table.language,
+    ),
+  }),
+);
+
+export const pomTemplatesRelations = relations(pomTemplates, ({ one }) => ({
+  team: one(teams, { fields: [pomTemplates.teamId], references: [teams.id] }),
+}));
+
+// ─── V2: Super Admins ─────────────────────────────────────────────────────────
+
+export const superAdmins = pgTable('super_admins', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

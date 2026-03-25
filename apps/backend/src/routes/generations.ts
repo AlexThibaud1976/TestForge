@@ -2,9 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { generations, generatedFiles } from '../db/schema.js';
+import { generations, generatedFiles, gitPushes, xrayTests, adoTestCases, xrayConfigs, analyses, userStories, sourceConnections } from '../db/schema.js';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import { GenerationService } from '../services/generation/GenerationService.js';
+import { GitPushService } from '../services/git/GitPushService.js';
+import { handleCreateXrayTest } from './xray.js';
+import { ADOConnector } from '../services/connectors/ADOConnector.js';
+import { decrypt } from '../utils/encryption.js';
 import type { Request } from 'express';
 
 const router: ReturnType<typeof Router> = Router();
@@ -116,6 +120,79 @@ router.get('/:id/download', requireAuth, async (req: Request, res) => {
   res.setHeader('Content-Type', 'application/zip');
   res.setHeader('Content-Disposition', `attachment; filename="testforge-${generation.id.slice(0, 8)}.zip"`);
   res.send(buffer);
+});
+
+// POST /api/generations/:id/push
+router.post('/:id/push', requireAuth, async (req: Request, res) => {
+  const { teamId } = req as AuthenticatedRequest;
+  const parsed = z.object({
+    gitConfigId: z.string().uuid(),
+    mode: z.enum(['commit', 'pr']),
+    branchName: z.string().optional(),
+  }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const service = new GitPushService();
+  const result = await service.push({ generationId: req.params['id'] as string, teamId, ...parsed.data });
+  res.status(201).json(result);
+});
+
+// GET /api/generations/:id/push-history
+router.get('/:id/push-history', requireAuth, async (req: Request, res) => {
+  const { teamId } = req as AuthenticatedRequest;
+  const history = await db
+    .select()
+    .from(gitPushes)
+    .where(and(eq(gitPushes.generationId, req.params['id'] as string), eq(gitPushes.teamId, teamId)));
+  res.json(history);
+});
+
+// POST /api/generations/:id/xray  (T035b)
+router.post('/:id/xray', requireAuth, handleCreateXrayTest);
+
+// POST /api/generations/:id/ado-test-case  (T038)
+router.post('/:id/ado-test-case', requireAuth, async (req: Request, res) => {
+  const { teamId } = req as AuthenticatedRequest;
+  const generationId = req.params['id'] as string;
+
+  const parsed = z.object({
+    testPlanId: z.number().optional(),
+    testSuiteId: z.number().optional(),
+  }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const [generation] = await db.select().from(generations).where(eq(generations.id, generationId)).limit(1);
+  if (!generation || generation.teamId !== teamId) { res.status(404).json({ error: 'Generation not found' }); return; }
+
+  const [analysis] = await db.select().from(analyses).where(eq(analyses.id, generation.analysisId!)).limit(1);
+  if (!analysis?.userStoryId) { res.status(400).json({ error: 'No user story linked' }); return; }
+
+  const [story] = await db.select().from(userStories).where(eq(userStories.id, analysis.userStoryId)).limit(1);
+  if (!story?.connectionId) { res.status(404).json({ error: 'User story or connection not found' }); return; }
+
+  const [connection] = await db.select().from(sourceConnections).where(eq(sourceConnections.id, story.connectionId)).limit(1);
+  if (!connection || connection.type !== 'azure_devops') { res.status(400).json({ error: 'ADO connection required' }); return; }
+
+  const credentials = JSON.parse(decrypt(connection.encryptedCredentials)) as Record<string, string>;
+  const ado = new ADOConnector({ organizationUrl: connection.baseUrl, project: connection.projectKey, pat: credentials['pat']! });
+
+  // Build steps from AC
+  const steps = (story.acceptanceCriteria ?? '').split('\n')
+    .filter((l) => l.trim())
+    .map((l) => ({ action: l.trim(), expectedResult: 'Vérification conforme' }));
+
+  const testCaseId = await ado.createTestCase(`[TestForge] ${story.title}`, steps);
+
+  if (parsed.data.testPlanId && parsed.data.testSuiteId) {
+    await ado.addTestCaseToSuite(parsed.data.testPlanId, parsed.data.testSuiteId, testCaseId);
+  }
+
+  const [record] = await db
+    .insert(adoTestCases)
+    .values({ generationId, teamId, testCaseId, testSuiteId: parsed.data.testSuiteId ?? null, testPlanId: parsed.data.testPlanId ?? null })
+    .returning();
+
+  res.status(201).json(record);
 });
 
 export default router;

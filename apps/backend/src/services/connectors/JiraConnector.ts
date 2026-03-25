@@ -122,6 +122,51 @@ export class JiraConnector {
     return stories;
   }
 
+  // V2: Writeback — met à jour description et/ou acceptance criteria dans Jira
+  async updateStory(
+    externalId: string,
+    fields: { description?: string; acceptanceCriteria?: string },
+  ): Promise<void> {
+    const updateFields: Record<string, unknown> = {};
+
+    if (fields.description !== undefined) {
+      updateFields['description'] = {
+        type: 'doc',
+        version: 1,
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: fields.description }] }],
+      };
+    }
+
+    // Acceptance Criteria est un champ custom — tenter customfield_10016 (story points) n'est pas AC
+    // On utilise la convention Jira Cloud : champ texte dans les fields si disponible
+    if (fields.acceptanceCriteria !== undefined) {
+      // Note: le nom exact du champ AC dépend de la configuration Jira de chaque équipe
+      // Le champ le plus courant est 'customfield_10016' mais varie selon les instances
+      // On met à jour 'description' avec AC appendé si le champ custom n'est pas connu
+      if (updateFields['description']) {
+        const existingDesc = (updateFields['description'] as { content: unknown[] }).content;
+        (updateFields['description'] as { content: unknown[] }).content = [
+          ...existingDesc,
+          { type: 'paragraph', content: [{ type: 'text', text: `\n\nCritères d'acceptance :\n${fields.acceptanceCriteria}` }] },
+        ];
+      }
+    }
+
+    const res = await fetch(`${this.baseUrl}/rest/api/3/issue/${externalId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: this.authHeader,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: updateFields }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Jira writeback error ${res.status}: ${body || res.statusText}`);
+    }
+  }
+
   /** Extrait le texte brut depuis le format Atlassian Document Format (ADF) */
   private extractText(doc: JiraDescription | null | undefined): string {
     if (!doc) return '';

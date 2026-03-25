@@ -159,6 +159,76 @@ export class ADOConnector {
     return stories;
   }
 
+  // V2: Writeback — met à jour un work item ADO via PATCH JSON Patch
+  async updateWorkItem(
+    workItemId: number,
+    fields: { description?: string; acceptanceCriteria?: string },
+  ): Promise<void> {
+    const patch: { op: string; path: string; value: string }[] = [];
+
+    if (fields.description !== undefined) {
+      patch.push({ op: 'replace', path: '/fields/System.Description', value: fields.description });
+    }
+    if (fields.acceptanceCriteria !== undefined) {
+      patch.push({
+        op: 'replace',
+        path: '/fields/Microsoft.VSTS.Common.AcceptanceCriteria',
+        value: fields.acceptanceCriteria,
+      });
+    }
+
+    const res = await fetch(
+      `${this.orgUrl}/${this.project}/_apis/wit/workitems/${workItemId}?api-version=${API_VERSION}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: this.authHeader, Accept: 'application/json', 'Content-Type': 'application/json-patch+json' },
+        body: JSON.stringify(patch),
+      },
+    );
+    if (!res.ok) throw new Error(`ADO updateWorkItem error ${res.status}: ${await res.text().catch(() => '')}`);
+  }
+
+  // V2: ADO Test Plans — crée un Test Case work item
+  async createTestCase(
+    title: string,
+    steps: { action: string; expectedResult: string }[],
+  ): Promise<number> {
+    const stepsXml = steps
+      .map(
+        (s, i) =>
+          `<step id="${i + 1}" type="ValidateStep"><parameterizedString isformatted="true">${s.action}</parameterizedString><parameterizedString isformatted="true">${s.expectedResult}</parameterizedString></step>`,
+      )
+      .join('');
+
+    const res = await fetch(
+      `${this.orgUrl}/${this.project}/_apis/wit/workitems/$Test%20Case?api-version=${API_VERSION}`,
+      {
+        method: 'POST',
+        headers: { Authorization: this.authHeader, Accept: 'application/json', 'Content-Type': 'application/json-patch+json' },
+        body: JSON.stringify([
+          { op: 'add', path: '/fields/System.Title', value: title },
+          { op: 'add', path: '/fields/Microsoft.VSTS.TCM.Steps', value: `<steps id="0" last="${steps.length}">${stepsXml}</steps>` },
+        ]),
+      },
+    );
+    if (!res.ok) throw new Error(`ADO createTestCase error ${res.status}: ${await res.text().catch(() => '')}`);
+    const result = await res.json() as { id: number };
+    return result.id;
+  }
+
+  // V2: ADO Test Plans — ajoute un test case à un test suite
+  async addTestCaseToSuite(
+    planId: number,
+    suiteId: number,
+    testCaseId: number,
+  ): Promise<void> {
+    const res = await fetch(
+      `${this.orgUrl}/${this.project}/_apis/test/plans/${planId}/suites/${suiteId}/testcases/${testCaseId}?api-version=${API_VERSION}`,
+      { method: 'POST', headers: { Authorization: this.authHeader, Accept: 'application/json' } },
+    );
+    if (!res.ok) throw new Error(`ADO addTestCaseToSuite error ${res.status}`);
+  }
+
   /** Supprime les balises HTML présentes dans les champs ADO (Description, AC) */
   private stripHtml(html: string | null): string {
     if (!html) return '';

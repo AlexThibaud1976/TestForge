@@ -34,6 +34,12 @@ import userStoriesRouter from './routes/userStories.js';
 import analysesRouter from './routes/analyses.js';
 import llmConfigsRouter from './routes/llmConfigs.js';
 import generationsRouter from './routes/generations.js';
+// V2 routes
+import gitConfigsRouter from './routes/git-configs.js';
+import writebackRouter from './routes/writeback.js';
+import xrayRouter from './routes/xray.js';
+import pomTemplatesRouter from './routes/pom-templates.js';
+import adminRouter from './routes/admin.js';
 
 app.use('/api/auth', authRouter);
 app.use('/api/teams', teamsRouter);
@@ -43,6 +49,12 @@ app.use('/api/analyses', analysesRouter);
 app.use('/api/llm-configs', llmConfigsRouter);
 app.use('/api/generations', generationsRouter);
 app.use('/api/billing', billingRouter);
+// V2
+app.use('/api/git-configs', gitConfigsRouter);
+app.use('/api', writebackRouter); // writeback routes: /api/analyses/:id/writeback + /api/user-stories/:id/writeback-history
+app.use('/api/xray-configs', xrayRouter);
+app.use('/api/pom-templates', pomTemplatesRouter);
+app.use('/api/admin', adminRouter);
 
 app.listen(PORT, () => {
   console.log(`TestForge backend running on http://localhost:${PORT}`);
