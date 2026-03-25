@@ -8,13 +8,31 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
-  { to: '/stories',             label: 'User Stories', icon: '📋' },
-  { to: '/history',             label: 'Historique',   icon: '🕐' },
-  { to: '/settings/connections',label: 'Connexions',   icon: '🔌' },
-  { to: '/settings/llm',        label: 'LLM',          icon: '🤖' },
-  { to: '/settings/team',       label: 'Équipe',       icon: '👥' },
-  { to: '/settings/billing',    label: 'Abonnement',   icon: '💳' },
+const navSections = [
+  {
+    label: null,
+    items: [
+      { to: '/stories', label: 'User Stories', icon: '📋' },
+      { to: '/history', label: 'Historique',   icon: '🕐' },
+    ],
+  },
+  {
+    label: 'Paramètres',
+    items: [
+      { to: '/settings/connections',   label: 'Connexions',     icon: '🔌' },
+      { to: '/settings/llm',           label: 'LLM',            icon: '🤖' },
+      { to: '/settings/git',           label: 'Git',            icon: '↑' },
+      { to: '/settings/pom-templates', label: 'Templates POM',  icon: '📄' },
+      { to: '/settings/team',          label: 'Équipe',         icon: '👥' },
+      { to: '/settings/billing',       label: 'Abonnement',     icon: '💳' },
+    ],
+  },
+  {
+    label: 'Admin',
+    items: [
+      { to: '/super-admin', label: 'Super Admin', icon: '🛡' },
+    ],
+  },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -32,22 +50,33 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`
-              }
-            >
-              <span>{item.icon}</span>
-              {item.label}
-            </NavLink>
+        <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+          {navSections.map((section, i) => (
+            <div key={i}>
+              {section.label && (
+                <div className="px-3 mb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  {section.label}
+                </div>
+              )}
+              <div className="space-y-0.5">
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`
+                    }
+                  >
+                    <span className="w-4 text-center">{item.icon}</span>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
