@@ -14,7 +14,7 @@ export function XrayTestButton({ generationId }: Props) {
     setCreating(true);
     setError(null);
     try {
-      const data = await api.post<{ xrayTestKey: string }>(`/generations/${generationId}/xray`, {});
+      const data = await api.post<{ xrayTestKey: string }>(`/api/generations/${generationId}/xray`, {});
       setTestKey(data.xrayTestKey);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création du test Xray');

@@ -20,7 +20,7 @@ export function PomTemplatesPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get<PomTemplate[]>('/pom-templates')
+    api.get<PomTemplate[]>('/api/pom-templates')
       .then(setTemplates)
       .catch(() => setTemplates([]))
       .finally(() => setLoading(false));
@@ -30,7 +30,7 @@ export function PomTemplatesPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const created = await api.post<PomTemplate>('/pom-templates', form);
+      const created = await api.post<PomTemplate>('/api/pom-templates', form);
       setTemplates((prev) => {
         const filtered = prev.filter((t) => !(t.framework === form.framework && t.language === form.language));
         return [...filtered, created];
@@ -44,7 +44,7 @@ export function PomTemplatesPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Supprimer ce template ?')) return;
-    await api.delete(`/pom-templates/${id}`).catch(() => null);
+    await api.delete(`/api/pom-templates/${id}`).catch(() => null);
     setTemplates((prev) => prev.filter((t) => t.id !== id));
   };
 

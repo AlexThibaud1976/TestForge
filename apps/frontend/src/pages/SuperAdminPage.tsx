@@ -27,8 +27,8 @@ export function SuperAdminPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get<{ data: TeamRow[] }>('/admin/teams'),
-      api.get<Stats>('/admin/stats'),
+      api.get<{ data: TeamRow[] }>('/api/admin/teams'),
+      api.get<Stats>('/api/admin/stats'),
     ])
       .then(([teamsRes, statsRes]) => {
         setTeams(teamsRes.data ?? []);
@@ -41,7 +41,7 @@ export function SuperAdminPage() {
   const handleSuspend = async (id: string, suspended: boolean) => {
     const action = suspended ? 'reactivate' : 'suspend';
     if (!confirm(`${suspended ? 'Réactiver' : 'Suspendre'} ce compte ?`)) return;
-    await api.post(`/admin/teams/${id}/${action}`, {}).catch(() => null);
+    await api.post(`/api/admin/teams/${id}/${action}`, {}).catch(() => null);
     setTeams((prev) =>
       prev.map((t) => (t.id === id ? { ...t, suspendedAt: suspended ? null : new Date().toISOString() } : t)),
     );

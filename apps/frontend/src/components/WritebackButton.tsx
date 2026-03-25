@@ -17,7 +17,7 @@ export function WritebackButton({ analysisId, improvedVersion, originalDescripti
     setPushing(true);
     setError(null);
     try {
-      await api.post(`/analyses/${analysisId}/writeback`, {
+      await api.post(`/api/analyses/${analysisId}/writeback`, {
         fields: { description: true, acceptanceCriteria: true },
       });
       setDone(true);

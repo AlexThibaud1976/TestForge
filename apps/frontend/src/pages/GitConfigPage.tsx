@@ -32,7 +32,7 @@ export function GitConfigPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<GitConfig[]>('/git-configs')
+    api.get<GitConfig[]>('/api/git-configs')
       .then(setConfigs)
       .catch(() => setConfigs([]))
       .finally(() => setLoading(false));
@@ -42,7 +42,7 @@ export function GitConfigPage() {
     e.preventDefault();
     setSaveError(null);
     try {
-      const created = await api.post<GitConfig>('/git-configs', form);
+      const created = await api.post<GitConfig>('/api/git-configs', form);
       setConfigs((prev) => [...prev, created]);
       setShowForm(false);
       setForm({ provider: 'github', name: '', repoUrl: '', token: '', defaultBranch: 'main' });
@@ -56,7 +56,7 @@ export function GitConfigPage() {
     setTestResult(null);
     try {
       const data = await api.post<{ ok: boolean; repoName: string; defaultBranch: string }>(
-        `/git-configs/${id}/test`, {},
+        `/api/git-configs/${id}/test`, {},
       );
       setTestResult(`✅ ${data.repoName} (branche: ${data.defaultBranch})`);
     } catch (err) {
@@ -69,7 +69,7 @@ export function GitConfigPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Supprimer cette configuration Git ?')) return;
     try {
-      await api.delete(`/git-configs/${id}`);
+      await api.delete(`/api/git-configs/${id}`);
       setConfigs((prev) => prev.filter((c) => c.id !== id));
     } catch {
       // ignore

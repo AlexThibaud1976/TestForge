@@ -14,7 +14,7 @@ export function ADOTestCaseButton({ generationId }: Props) {
     setCreating(true);
     setError(null);
     try {
-      const data = await api.post<{ testCaseId: number }>(`/generations/${generationId}/ado-test-case`, {});
+      const data = await api.post<{ testCaseId: number }>(`/api/generations/${generationId}/ado-test-case`, {});
       setTestCaseId(data.testCaseId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création du Test Case ADO');

@@ -29,7 +29,7 @@ export function GitPushButton({ generationId }: Props) {
 
   useEffect(() => {
     if (showDialog && configs.length === 0) {
-      api.get<GitConfig[]>('/git-configs')
+      api.get<GitConfig[]>('/api/git-configs')
         .then((data) => {
           setConfigs(data);
           if (data.length > 0) setSelectedConfig(data[0]!.id);
@@ -43,7 +43,7 @@ export function GitPushButton({ generationId }: Props) {
     setPushing(true);
     setError(null);
     try {
-      const data = await api.post<PushResult>(`/generations/${generationId}/push`, {
+      const data = await api.post<PushResult>(`/api/generations/${generationId}/push`, {
         gitConfigId: selectedConfig,
         mode,
       });
