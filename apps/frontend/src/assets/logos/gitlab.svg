@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <!-- Abstract fox/triangle shape in GitLab orange -->
+  <!-- Main body triangle -->
+  <path d="M20 4 L36 32 L4 32 Z" fill="#FC6D26"/>
+  <!-- Left wing / ear shape -->
+  <path d="M4 32 L10 12 L20 24 Z" fill="#E24329"/>
+  <!-- Right wing / ear shape -->
+  <path d="M36 32 L30 12 L20 24 Z" fill="#E24329"/>
+  <!-- Bottom highlight -->
+  <path d="M4 32 L20 38 L36 32 L20 24 Z" fill="#FCA326"/>
+</svg>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { ProviderLogo } from '../components/ui/ProviderLogo.js';
 
 type Provider = 'openai' | 'azure_openai' | 'anthropic' | 'mistral' | 'ollama';
 
@@ -124,6 +125,7 @@ export function LLMConfigPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
+                    <ProviderLogo provider={config.provider} size={18} showLabel />
                     <span className="text-sm font-medium text-gray-900">{PROVIDER_LABELS[config.provider]}</span>
                     <span className="text-xs font-mono text-gray-400">{config.model}</span>
                     {config.isDefault && (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { ProviderLogo } from '../components/ui/ProviderLogo.js';
 
 interface Connection {
   id: string;
@@ -105,6 +106,7 @@ export function ConnectionsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
+                    <ProviderLogo provider={conn.type} size={16} />
                     <span className="text-sm font-medium text-gray-900">{conn.name}</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                       {conn.type === 'jira' ? 'Jira' : 'Azure DevOps'}

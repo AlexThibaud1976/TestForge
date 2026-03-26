@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { ProviderLogo } from '../components/ui/ProviderLogo.js';
 
 interface GitConfig {
   id: string;
@@ -173,9 +174,12 @@ export function GitConfigPage() {
           {configs.map((config) => (
             <div key={config.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-900 text-sm">{config.name}</div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {PROVIDER_LABELS[config.provider]} · {config.repoUrl} · branche: {config.defaultBranch}
+                <div className="flex items-center gap-2 mb-0.5">
+                  <ProviderLogo provider={config.provider} size={16} showLabel />
+                  <span className="font-medium text-gray-900 text-sm">{config.name}</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  {config.repoUrl} · branche: {config.defaultBranch}
                 </div>
               </div>
               <div className="flex items-center gap-2">

@@ -1,3 +1,5 @@
+import { ProviderLogo } from '../ui/ProviderLogo.js';
+
 type Framework = 'playwright' | 'selenium' | 'cypress';
 type Language = 'typescript' | 'javascript' | 'python' | 'java' | 'csharp' | 'ruby' | 'kotlin';
 
@@ -7,10 +9,10 @@ interface FrameworkSelectorProps {
   onChange: (framework: Framework, language: Language) => void;
 }
 
-const FRAMEWORKS: { id: Framework; label: string; logo: string }[] = [
-  { id: 'playwright', label: 'Playwright',  logo: '🎭' },
-  { id: 'selenium',   label: 'Selenium v4', logo: '⚙️' },
-  { id: 'cypress',    label: 'Cypress',     logo: '🌲' },
+const FRAMEWORKS: { id: Framework; label: string }[] = [
+  { id: 'playwright', label: 'Playwright'  },
+  { id: 'selenium',   label: 'Selenium v4' },
+  { id: 'cypress',    label: 'Cypress'     },
 ];
 
 const LANGUAGES_BY_FRAMEWORK: Record<Framework, { id: Language; label: string }[]> = {
@@ -61,7 +63,7 @@ export function FrameworkSelector({ framework, language, onChange }: FrameworkSe
                   : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
               }`}
             >
-              <span>{fw.logo}</span>
+              <ProviderLogo provider={fw.id} size={14} />
               {fw.label}
             </button>
           ))}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <!-- Atlassian-style blue chevron/diamond -->
+  <!-- Top diamond -->
+  <path d="M20 2 L30 12 L20 20 L10 12 Z" fill="#0052CC"/>
+  <!-- Bottom chevron pointing right -->
+  <path d="M10 20 L20 20 L20 38 L10 28 Z" fill="#2684FF"/>
+  <path d="M20 20 L30 20 L30 28 L20 38 Z" fill="#0052CC"/>
+</svg>

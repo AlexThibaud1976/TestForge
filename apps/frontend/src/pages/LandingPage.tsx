@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { Logo } from '../components/ui/Logo.js';
+import { ProviderLogo } from '../components/ui/ProviderLogo.js';
 
 const SCORE_DIMENSIONS = [
   { label: 'Clarté', pct: 85, color: 'bg-blue-500' },
@@ -20,10 +22,10 @@ const PERSONAS = [
   { emoji: '🛠', name: 'Thomas — Tech Lead', pain: 'Tests IA = dette technique systématique', gain: 'Architecture POM respectée dès le départ' },
 ];
 
-const FRAMEWORKS = [
-  { group: 'Playwright', items: ['TypeScript', 'JavaScript', 'Python', 'Java', 'C#'] },
-  { group: 'Selenium', items: ['Java', 'Python', 'C# (NUnit)', 'Ruby (RSpec)', 'Kotlin (JUnit 5)'] },
-  { group: 'Cypress', items: ['JavaScript', 'TypeScript'] },
+const FRAMEWORKS: Array<{ group: 'playwright' | 'selenium' | 'cypress'; label: string; items: string[] }> = [
+  { group: 'playwright', label: 'Playwright',  items: ['TypeScript', 'JavaScript', 'Python', 'Java', 'C#'] },
+  { group: 'selenium',   label: 'Selenium',    items: ['Java', 'Python', 'C# (NUnit)', 'Ruby (RSpec)', 'Kotlin (JUnit 5)'] },
+  { group: 'cypress',    label: 'Cypress',     items: ['JavaScript', 'TypeScript'] },
 ];
 
 const LLM_PROVIDERS = [
@@ -87,7 +89,7 @@ export function LandingPage() {
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-gray-200/60">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
-          <span className="text-xl font-bold tracking-tight text-blue-600">🔧 TestForge</span>
+          <Logo size={28} showText />
           <div className="flex items-center gap-3">
             <Link to="/docs" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-2">Documentation</Link>
             <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-2">Se connecter</Link>
@@ -345,7 +347,10 @@ test.describe('US-42 — Authentification', () => {
         <div className="grid sm:grid-cols-3 gap-5">
           {FRAMEWORKS.map((fw) => (
             <div key={fw.group} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-900 mb-3">{fw.group}</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <ProviderLogo provider={fw.group} size={20} />
+                <h3 className="font-bold text-sm text-gray-900">{fw.label}</h3>
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {fw.items.map((lang) => (
                   <span key={lang} className="text-xs bg-gray-50 border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full">
