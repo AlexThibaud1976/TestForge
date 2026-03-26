@@ -33,4 +33,15 @@ export class OpenAIAdapter implements LLMClient {
       completionTokens: response.usage?.completion_tokens ?? 0,
     };
   }
+
+  // Feature 010: embeddings
+  embedSupported(): boolean { return true; }
+
+  async embed(text: string): Promise<number[]> {
+    const response = await this.client.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text,
+    });
+    return response.data[0]?.embedding ?? [];
+  }
 }

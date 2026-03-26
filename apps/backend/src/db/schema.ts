@@ -8,6 +8,7 @@ import {
   integer,
   jsonb,
   uniqueIndex,
+  real,
 } from 'drizzle-orm/pg-core';
 // V2 additions use the same imports above
 import { relations } from 'drizzle-orm';
@@ -95,6 +96,8 @@ export const sourceConnections = pgTable('source_connections', {
   // V2 Xray — credentials optionnels, uniquement pour les connexions Jira
   xrayClientId: text('xray_client_id'),
   xrayClientSecret: text('xray_client_secret'), // chiffré AES-256-GCM
+  // Fix 012: champ AC configurable par instance Jira (ex: customfield_10020)
+  acFieldId: text('ac_field_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -120,6 +123,8 @@ export const userStories = pgTable(
     labels: text('labels').array().notNull().default([]),
     status: text('status'),
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+    // Feature 010: embedding pour la détection de doublons
+    embedding: jsonb('embedding'), // number[] | null
   },
   (table) => ({
     connectionExternalUnique: uniqueIndex('user_stories_connection_external_idx').on(
@@ -151,7 +156,10 @@ export const analyses = pgTable('analyses', {
   scoreEdgeCases: smallint('score_edge_cases').notNull(),
   scoreAcceptanceCriteria: smallint('score_acceptance_criteria').notNull(),
   suggestions: jsonb('suggestions').notNull().default([]),
-  improvedVersion: text('improved_version'),
+  improvedVersion: text('improved_version'),             // rétrocompat — texte complet
+  // Fix 012: champs séparés pour description et AC améliorés
+  improvedDescription: text('improved_description'),
+  improvedAcceptanceCriteria: text('improved_acceptance_criteria'),
   llmProvider: text('llm_provider').notNull(),
   llmModel: text('llm_model').notNull(),
   promptVersion: text('prompt_version').notNull(),
@@ -184,6 +192,9 @@ export const generations = pgTable('generations', {
   validationStatus: text('validation_status').default('skipped'), // skipped | valid | auto_corrected | has_errors
   validationErrors: jsonb('validation_errors').default([]),
   correctionAttempts: integer('correction_attempts').default(0),
+  // Feature 008: régénération incrémentale
+  sourceHash: text('source_hash'),         // SHA-256 de description+AC au moment de la génération
+  incremental: boolean('incremental').default(false), // true = génération incrémentale
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -412,6 +423,50 @@ export const pomRegistryRelations = relations(pomRegistry, ({ one }) => ({
   team: one(teams, { fields: [pomRegistry.teamId], references: [teams.id] }),
   generation: one(generations, { fields: [pomRegistry.sourceGenerationId], references: [generations.id] }),
   userStory: one(userStories, { fields: [pomRegistry.sourceUserStoryId], references: [userStories.id] }),
+}));
+
+// ─── Feature 007: Generation Feedbacks ────────────────────────────────────────
+
+export const generationFeedbacks = pgTable(
+  'generation_feedbacks',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    generationId: uuid('generation_id').notNull().references(() => generations.id, { onDelete: 'cascade' }),
+    teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull(),
+    rating: text('rating').notNull(),   // 'positive' | 'negative'
+    tags: jsonb('tags').notNull().default([]), // ['import_missing', 'wrong_selector', ...]
+    comment: text('comment'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    // Un seul feedback par utilisateur par génération
+    uniqueUserGeneration: uniqueIndex('generation_feedbacks_user_generation').on(table.generationId, table.userId),
+  }),
+);
+
+export const generationFeedbacksRelations = relations(generationFeedbacks, ({ one }) => ({
+  generation: one(generations, { fields: [generationFeedbacks.generationId], references: [generations.id] }),
+  team: one(teams, { fields: [generationFeedbacks.teamId], references: [teams.id] }),
+}));
+
+// ─── Feature 010: Duplicate Detection ────────────────────────────────────────
+
+export const duplicatePairs = pgTable('duplicate_pairs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  teamId: uuid('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  storyAId: uuid('story_a_id').notNull().references(() => userStories.id, { onDelete: 'cascade' }),
+  storyBId: uuid('story_b_id').notNull().references(() => userStories.id, { onDelete: 'cascade' }),
+  similarity: real('similarity').notNull(),   // 0.0 à 1.0
+  status: text('status').notNull().default('detected'), // 'detected' | 'ignored'
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const duplicatePairsRelations = relations(duplicatePairs, ({ one }) => ({
+  team: one(teams, { fields: [duplicatePairs.teamId], references: [teams.id] }),
+  storyA: one(userStories, { fields: [duplicatePairs.storyAId], references: [userStories.id] }),
+  storyB: one(userStories, { fields: [duplicatePairs.storyBId], references: [userStories.id] }),
 }));
 
 // ─── V2: Super Admins ─────────────────────────────────────────────────────────

@@ -8,6 +8,9 @@ import { getPrompt } from './prompts/registry.js';
 import { CodeValidator, type FileError } from './CodeValidator.js';
 import { buildCorrectionPrompt } from './prompts/correction-v1.0.js';
 import { PomRegistryService, buildPomContextSection } from './PomRegistryService.js';
+import { computeStoryHash } from '../../utils/storyHash.js';
+import { diffAcceptanceCriteria, formatDiffForPrompt } from '../../utils/diffAC.js';
+import { buildIncrementalPrompt, INCREMENTAL_PROMPT_VERSION, INCREMENTAL_SYSTEM_PROMPT } from './prompts/incremental-v1.0.js';
 import type { LLMClient } from '../llm/LLMClient.js';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -51,6 +54,7 @@ export class GenerationService {
     framework = 'playwright',
     language = 'typescript',
     manualTestSetId?: string | null,
+    incremental = false,
   ): Promise<{ id: string; analysisId: string; status: string }> {
     const analysis = await db.query.analyses.findFirst({
       where: and(eq(analyses.id, analysisId), eq(analyses.teamId, teamId)),
@@ -61,6 +65,12 @@ export class GenerationService {
       where: and(eq(llmConfigs.teamId, teamId), eq(llmConfigs.isDefault, true)),
     });
     if (!llmConfig) throw new Error('No default LLM configuration found for this team.');
+
+    // Feature 008: calculer le hash source de l'US
+    const story = analysis.userStoryId
+      ? await db.query.userStories.findFirst({ where: eq(userStories.id, analysis.userStoryId) })
+      : null;
+    const sourceHash = story ? computeStoryHash(story.description, story.acceptanceCriteria) : null;
 
     const prompt = getPrompt(framework, language);
 
@@ -77,6 +87,8 @@ export class GenerationService {
         promptVersion: prompt.version,
         status: 'pending',
         manualTestSetId: manualTestSetId ?? null,
+        sourceHash,
+        incremental,
       })
       .returning();
 
@@ -239,6 +251,116 @@ export class GenerationService {
       status: gen?.status ?? 'success', durationMs: gen?.durationMs ?? 0,
       createdAt: gen?.createdAt ?? new Date(),
     };
+  }
+
+  /**
+   * Feature 008: Régénération incrémentale.
+   * Charge le code existant d'une génération précédente + calcule le diff AC + appelle le LLM incrémental.
+   */
+  async processIncrementalGeneration(
+    generationId: string,
+    previousGenerationId: string,
+    analysisId: string,
+    teamId: string,
+    framework: string,
+    language: string,
+  ): Promise<{ changePercent: number; recommendFullRegen: boolean }> {
+    const startTime = Date.now();
+
+    try {
+      const analysis = await db.query.analyses.findFirst({
+        where: and(eq(analyses.id, analysisId), eq(analyses.teamId, teamId)),
+      });
+      if (!analysis) throw new Error('Analysis not found');
+
+      const story = await db.query.userStories.findFirst({
+        where: and(eq(userStories.id, analysis.userStoryId!), eq(userStories.teamId, teamId)),
+      });
+      if (!story) throw new Error('User story not found');
+
+      // Charger les fichiers de la génération précédente
+      const previousFiles = await db
+        .select()
+        .from(generatedFiles)
+        .where(eq(generatedFiles.generationId, previousGenerationId));
+
+      if (previousFiles.length === 0) throw new Error('No previous files to base incremental generation on');
+
+      // Charger le source_hash de la génération précédente pour reconstruire le diff
+      const [prevGen] = await db
+        .select({ sourceHash: generations.sourceHash })
+        .from(generations)
+        .where(eq(generations.id, previousGenerationId))
+        .limit(1);
+
+      // Calculer le diff AC (approximation : on compare le hash stocké avec le contenu actuel)
+      // En v1, on ne stocke pas l'ancien AC → on fait un diff symbolique
+      const currentAC = story.acceptanceCriteria;
+      const diff = diffAcceptanceCriteria(null, currentAC); // simplified: treat all as new if no old stored
+      const changePercent = prevGen?.sourceHash ? diff.changePercent : 50; // default 50% if unknown
+      const recommendFullRegen = changePercent >= 60;
+
+      // Charger config LLM
+      const llmConfig = await db.query.llmConfigs.findFirst({
+        where: and(eq(llmConfigs.teamId, teamId), eq(llmConfigs.isDefault, true)),
+      });
+      if (!llmConfig) throw new Error('No LLM config found');
+
+      const client = createLLMClient({
+        provider: llmConfig.provider as 'openai' | 'azure_openai' | 'anthropic' | 'mistral' | 'ollama',
+        model: llmConfig.model,
+        apiKey: decrypt(llmConfig.encryptedApiKey),
+        ...(llmConfig.azureEndpoint ? { azureEndpoint: llmConfig.azureEndpoint } : {}),
+        ...(llmConfig.azureDeployment ? { azureDeployment: llmConfig.azureDeployment } : {}),
+        ...(llmConfig.ollamaEndpoint ? { ollamaEndpoint: llmConfig.ollamaEndpoint } : {}),
+      });
+
+      const existingFileResults: GeneratedFileResult[] = previousFiles.map((f) => ({
+        type: f.fileType as GeneratedFileResult['type'],
+        filename: f.filename,
+        content: f.content,
+      }));
+
+      const diffText = formatDiffForPrompt({
+        added: currentAC ? [currentAC] : [],
+        removed: [],
+        modified: [],
+        unchanged: [],
+        changePercent,
+      });
+
+      const userPrompt = buildIncrementalPrompt(existingFileResults, diffText, story.title, changePercent);
+
+      const response = await client.complete(
+        [
+          { role: 'system', content: INCREMENTAL_SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+        { temperature: 0.1, jsonMode: true, maxTokens: 16000 },
+      );
+
+      const parsedFiles = this.parseFiles(response.content);
+
+      if (parsedFiles.length > 0) {
+        await db.insert(generatedFiles).values(
+          parsedFiles.map((f) => ({ generationId, fileType: f.type, filename: f.filename, content: f.content })),
+        );
+      }
+
+      await db
+        .update(generations)
+        .set({ status: 'success', durationMs: Date.now() - startTime, promptVersion: INCREMENTAL_PROMPT_VERSION })
+        .where(eq(generations.id, generationId));
+
+      return { changePercent, recommendFullRegen };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Incremental generation failed';
+      await db
+        .update(generations)
+        .set({ status: 'error', errorMessage: message, durationMs: Date.now() - startTime })
+        .where(eq(generations.id, generationId));
+      throw err;
+    }
   }
 
   /** Génère un ZIP en mémoire contenant tous les fichiers */

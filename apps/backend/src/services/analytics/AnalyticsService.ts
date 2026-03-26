@@ -1,6 +1,6 @@
 import { sql, eq, and, gte, desc, asc, count } from 'drizzle-orm';
 import { db } from '../../db/index.js';
-import { analyses, generations, manualTestSets, manualTestCases, teams, userStories } from '../../db/schema.js';
+import { analyses, generations, manualTestSets, manualTestCases, teams, userStories, generationFeedbacks } from '../../db/schema.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,8 +16,17 @@ export interface AnalyticsCoefficients {
   manualTest: number;
 }
 
+export interface FeedbackStats {
+  total: number;
+  positive: number;
+  negative: number;
+  satisfactionRate: number | null; // 0-100
+  topNegativeTags: Array<{ tag: string; count: number }>;
+}
+
 export interface AnalyticsMetrics {
   period: { from: string; to: string };
+  feedback: FeedbackStats;
   counts: {
     analyses: number;
     generations: number;
@@ -60,6 +69,37 @@ export class AnalyticsService {
     const coefficients: AnalyticsCoefficients = {
       ...DEFAULT_COEFFICIENTS,
       ...((team?.coefficients as Partial<AnalyticsCoefficients> | null) ?? {}),
+    };
+
+    // ── Feedback stats ───────────────────────────────────────────────────────
+
+    const feedbackRows = await db
+      .select({ rating: generationFeedbacks.rating, tags: generationFeedbacks.tags })
+      .from(generationFeedbacks)
+      .where(and(eq(generationFeedbacks.teamId, teamId), gte(generationFeedbacks.createdAt, periodStart)));
+
+    const positiveCount = feedbackRows.filter((f) => f.rating === 'positive').length;
+    const negativeCount = feedbackRows.filter((f) => f.rating === 'negative').length;
+    const totalFeedback = feedbackRows.length;
+
+    // Agréger les tags négatifs
+    const tagCounts = new Map<string, number>();
+    for (const fb of feedbackRows.filter((f) => f.rating === 'negative')) {
+      for (const tag of (fb.tags ?? []) as string[]) {
+        tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+      }
+    }
+    const topNegativeTags = Array.from(tagCounts.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const feedbackStats: FeedbackStats = {
+      total: totalFeedback,
+      positive: positiveCount,
+      negative: negativeCount,
+      satisfactionRate: totalFeedback > 0 ? Math.round((positiveCount / totalFeedback) * 100) : null,
+      topNegativeTags,
     };
 
     // ── Counts ──────────────────────────────────────────────────────────────
@@ -184,6 +224,7 @@ export class AnalyticsService {
 
     return {
       period: { from: periodStart.toISOString(), to: now.toISOString() },
+      feedback: feedbackStats,
       counts: {
         analyses: analysisCount,
         generations: generationCount,

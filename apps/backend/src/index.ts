@@ -53,6 +53,7 @@ const v2Routes: Array<{ path: string; name: string }> = [
   { path: './routes/manual-tests.js', name: '/api (manual-tests)' },
   { path: './routes/analytics.js', name: '/api/analytics' },
   { path: './routes/pom-registry.js', name: '/api/pom-registry' },
+  { path: './routes/duplicates.js', name: '/api/duplicates' },
 ];
 
 for (const { path: routePath, name } of v2Routes) {

@@ -28,7 +28,9 @@ Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans markdown, sans text
       "suggestion": "<correction proposée>"
     }
   ],
-  "improvedVersion": "<texte complet de la US améliorée avec description + critères d'acceptance>"
+  "improvedVersion": "<texte complet de la US améliorée avec description + critères d'acceptance>",
+  "improvedDescription": "<description améliorée UNIQUEMENT — sans les critères d'acceptance>",
+  "improvedAcceptanceCriteria": "<critères d'acceptance améliorés UNIQUEMENT — liste avec puces>"
 }
 
 ## Définition des dimensions

@@ -13,6 +13,8 @@ import { XrayTestButton } from '../components/XrayTestButton.js';
 import { ADOTestCaseButton } from '../components/ADOTestCaseButton.js';
 import { ManualTestList } from '../components/ManualTestList.js';
 import { ValidationBadge } from '../components/ValidationBadge.js';
+import { FeedbackWidget } from '../components/FeedbackWidget.js';
+import { TestPreview } from '../components/TestPreview.js';
 import { ManualTestGenerateButton } from '../components/ManualTestGenerateButton.js';
 import { ManualTestValidateButton } from '../components/ManualTestValidateButton.js';
 import { ManualTestPushButton } from '../components/ManualTestPushButton.js';
@@ -71,6 +73,11 @@ export function StoryDetailPage() {
   const [loading, setLoading] = useState(true);
   const [manualTestSet, setManualTestSet] = useState<ManualTestSet | null>(null);
   const [manualTestLoading, setManualTestLoading] = useState(false);
+  // Feature 008: détection de changement
+  const [changeStatus, setChangeStatus] = useState<{ changed: boolean; generationId: string | null } | null>(null);
+  const [showIncrementalDialog, setShowIncrementalDialog] = useState(false);
+  // Feature 011: preview
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -99,7 +106,13 @@ export function StoryDetailPage() {
       setGeneration(full);
       setGenerationState('done');
       setPendingGenerationId(null);
-      setActiveTab('generation'); // switcher automatiquement
+      setActiveTab('generation');
+      // Feature 008: vérifier si l'US a changé depuis cette génération
+      if (story?.id) {
+        api.get<{ changed: boolean; generationId: string | null }>(`/api/user-stories/${story.id}/change-status`)
+          .then(setChangeStatus)
+          .catch(() => null);
+      }
     } else if (row.status === 'error') {
       setGenerationError('Erreur lors de la génération. Réessayez.');
       setGenerationState('error');
@@ -123,10 +136,11 @@ export function StoryDetailPage() {
     }
   };
 
-  const handleGenerate = async (useImproved: boolean) => {
+  const handleGenerate = async (useImproved: boolean, incremental = false) => {
     if (!analysis) return;
     setGenerationState('loading');
     setGenerationError(null);
+    setShowIncrementalDialog(false);
     try {
       const pending = await api.post<{ id: string; status: string }>('/api/generations', {
         analysisId: analysis.id,
@@ -134,12 +148,22 @@ export function StoryDetailPage() {
         framework,
         language,
         ...(linkManualTests && manualTestSet?.status !== 'draft' ? { manualTestSetId: manualTestSet?.id } : {}),
+        ...(incremental && changeStatus?.generationId ? {
+          incremental: true,
+          previousGenerationId: changeStatus.generationId,
+        } : {}),
       });
       setPendingGenerationId(pending.id);
     } catch (e) {
       setGenerationError(e instanceof Error ? e.message : 'Erreur lors de la génération');
       setGenerationState('error');
     }
+  };
+
+  const checkChangeStatus = (analysisId: string) => {
+    api.get<{ changed: boolean; generationId: string | null }>(`/api/user-stories/${story?.id}/change-status`)
+      .then(setChangeStatus)
+      .catch(() => setChangeStatus(null));
   };
 
   const displayText = activeVersion === 'improved' && analysis?.improvedVersion
@@ -397,6 +421,27 @@ export function StoryDetailPage() {
                   </p>
                 )}
 
+                {/* Feature 008: badge US modifiée */}
+                {changeStatus?.changed && generationState === 'idle' && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-md p-2 space-y-2">
+                    <p className="text-xs text-orange-700 font-medium">⚠️ L'US a été modifiée depuis la dernière génération</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => void handleGenerate(false, true)}
+                        className="text-xs bg-orange-600 text-white px-2.5 py-1 rounded hover:bg-orange-700"
+                      >
+                        ↻ Mettre à jour les tests
+                      </button>
+                      <button
+                        onClick={() => setChangeStatus(null)}
+                        className="text-xs text-orange-500 hover:text-orange-700"
+                      >
+                        Ignorer
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {manualTestSet && manualTestSet.status !== 'draft' && (
                   <label className="flex items-start gap-1.5 text-xs text-indigo-700 bg-indigo-50 p-2 rounded-md cursor-pointer">
                     <input
@@ -493,12 +538,34 @@ export function StoryDetailPage() {
             {/* Code généré — pleine largeur */}
             {generationState === 'done' && generation && generation.files.length > 0 && (
               <div className="space-y-3">
-                {/* Boutons d'action V2 */}
+                {/* Boutons d'action V2 + Preview (Feature 011) */}
                 <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setShowPreview(!showPreview)}
+                    className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${showPreview ? 'bg-indigo-50 text-indigo-700 border-indigo-300' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    {showPreview ? '🔍 Masquer la preview' : '🔍 Prévisualiser'}
+                  </button>
                   <GitPushButton generationId={generation.id} />
                   <XrayTestButton generationId={generation.id} />
                   <ADOTestCaseButton generationId={generation.id} />
                 </div>
+
+                {/* Feature 011: TestPreview panel */}
+                {showPreview && (() => {
+                  const specFile = generation.files.find((f) => f.type === 'test_spec');
+                  const fixturesFile = generation.files.find((f) => f.type === 'fixtures');
+                  return specFile ? (
+                    <div className="bg-white border border-indigo-200 rounded-xl p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">🔍 Preview du test</h3>
+                      <TestPreview specCode={specFile.content} fixturesJson={fixturesFile?.content} />
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-400 text-center">
+                      Aucun fichier spec trouvé pour la preview.
+                    </div>
+                  );
+                })()}
 
                 <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                   <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-gray-900 to-gray-800">
@@ -525,6 +592,9 @@ export function StoryDetailPage() {
                     </span>
                   </div>
                   <CodeViewer files={generation.files} generationId={generation.id} />
+                  <div className="px-5 pb-4 bg-gray-900 border-t border-gray-700">
+                    <FeedbackWidget generationId={generation.id} />
+                  </div>
                 </div>
               </div>
             )}

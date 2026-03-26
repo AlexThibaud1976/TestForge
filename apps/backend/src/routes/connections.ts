@@ -20,6 +20,8 @@ const jiraSchema = z.object({
   projectKey: z.string().min(1),
   xrayClientId: z.string().optional(),
   xrayClientSecret: z.string().optional(),
+  // Fix 012: champ AC configurable
+  acFieldId: z.string().optional(),
 });
 
 const adoSchema = z.object({
@@ -46,6 +48,7 @@ router.get('/', requireAuth, async (req: Request, res) => {
       lastSyncAt: sourceConnections.lastSyncAt,
       createdAt: sourceConnections.createdAt,
       xrayClientId: sourceConnections.xrayClientId, // exposé (pas un secret)
+      acFieldId: sourceConnections.acFieldId,
     })
     .from(sourceConnections)
     .where(eq(sourceConnections.teamId, teamId));
@@ -76,6 +79,7 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res) => {
   // Chiffrer le secret Xray si fourni (uniquement pour Jira)
   const xrayClientId = data.type === 'jira' && data.xrayClientId ? data.xrayClientId : null;
   const xrayClientSecret = data.type === 'jira' && data.xrayClientSecret ? encrypt(data.xrayClientSecret) : null;
+  const acFieldId = data.type === 'jira' && data.acFieldId ? data.acFieldId : null;
 
   const [created] = await db
     .insert(sourceConnections)
@@ -88,6 +92,7 @@ router.post('/', requireAuth, requireAdmin, async (req: Request, res) => {
       projectKey,
       xrayClientId,
       xrayClientSecret,
+      acFieldId,
     })
     .returning();
 
@@ -199,6 +204,40 @@ router.delete('/:id', requireAuth, requireAdmin, async (req: Request, res) => {
   }
 
   res.status(204).send();
+});
+
+// GET /api/connections/:id/sprints — Feature 009: liste les sprints/itérations
+router.get('/:id/sprints', requireAuth, async (req: Request, res) => {
+  const { teamId } = req as AuthenticatedRequest;
+  const connection = await db.query.sourceConnections.findFirst({
+    where: and(eq(sourceConnections.id, req.params['id'] as string), eq(sourceConnections.teamId, teamId)),
+  });
+  if (!connection) { res.status(404).json({ error: 'Connection not found' }); return; }
+
+  const credentials = JSON.parse(decrypt(connection.encryptedCredentials)) as Record<string, string>;
+
+  try {
+    if (connection.type === 'jira') {
+      const connector = new JiraConnector({
+        baseUrl: connection.baseUrl,
+        email: credentials['email']!,
+        apiToken: credentials['apiToken']!,
+        projectKey: connection.projectKey,
+      });
+      const sprints = await connector.listSprints();
+      res.json(sprints.map((s) => ({ id: String(s.id), name: s.name, state: s.state })));
+    } else {
+      const connector = new ADOConnector({
+        organizationUrl: connection.baseUrl,
+        project: connection.projectKey,
+        pat: credentials['pat']!,
+      });
+      const iterations = await connector.listIterations();
+      res.json(iterations.map((it) => ({ id: it.id, name: it.name, path: it.path })));
+    }
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 export default router;

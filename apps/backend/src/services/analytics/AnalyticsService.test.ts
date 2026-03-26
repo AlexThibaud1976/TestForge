@@ -37,15 +37,17 @@ describe('AnalyticsService', () => {
     mockDb = (await import('../../db/index.js')).db;
 
     const responses = [
-      [{ coefficients: null }],                                                // 1. team
-      [{ count: 10 }],                                                        // 2. analysis count
-      [{ count: 5 }],                                                         // 3. generation count
-      [{ count: 3 }],                                                         // 4. manualTestSets count
-      [{ count: 15 }],                                                        // 5. manualTestCases count
-      [{ key: 'playwright+typescript', count: 4 }, { key: 'selenium+java', count: 1 }], // 6. frameworks
-      [{ key: 'openai', count: 8 }, { key: 'anthropic', count: 2 }],          // 7. providers
-      [{ id: 'us-1', title: 'Login', score: 85 }],                           // 8. best US
-      [{ id: 'us-2', title: 'Register', score: 42 }],                        // 9. worst US
+      // 007: feedback query (ajoutée avant les counts)
+      [{ rating: 'positive', tags: [] }, { rating: 'negative', tags: ['wrong_selector'] }], // 1. feedbacks
+      [{ coefficients: null }],                                                // 2. team
+      [{ count: 10 }],                                                        // 3. analysis count
+      [{ count: 5 }],                                                         // 4. generation count
+      [{ count: 3 }],                                                         // 5. manualTestSets count
+      [{ count: 15 }],                                                        // 6. manualTestCases count
+      [{ key: 'playwright+typescript', count: 4 }, { key: 'selenium+java', count: 1 }], // 7. frameworks
+      [{ key: 'openai', count: 8 }, { key: 'anthropic', count: 2 }],          // 8. providers
+      [{ id: 'us-1', title: 'Login', score: 85 }],                           // 9. best US
+      [{ id: 'us-2', title: 'Register', score: 42 }],                        // 10. worst US
     ];
 
     let idx = 0;

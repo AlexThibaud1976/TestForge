@@ -38,6 +38,39 @@ interface JiraDescriptionNode {
   content?: JiraDescriptionNode[];
 }
 
+// ─── Feature 009: SyncFilters ─────────────────────────────────────────────────
+
+export interface SyncFilters {
+  sprint?: string;       // nom du sprint Jira (ex: "Sprint 14")
+  statuses?: string[];   // ex: ["Ready", "In Progress"]
+  labels?: string[];     // ex: ["ready-for-qa"]
+}
+
+export interface JiraSprint {
+  id: number;
+  name: string;
+  state: 'active' | 'closed' | 'future';
+}
+
+function buildJql(projectKey: string, filters?: SyncFilters): string {
+  const clauses: string[] = [
+    `project = "${projectKey}"`,
+    'issuetype = Story',
+  ];
+  if (filters?.sprint) {
+    clauses.push(`sprint = "${filters.sprint}"`);
+  }
+  if (filters?.statuses && filters.statuses.length > 0) {
+    const statusList = filters.statuses.map((s) => `"${s}"`).join(', ');
+    clauses.push(`status IN (${statusList})`);
+  }
+  if (filters?.labels && filters.labels.length > 0) {
+    const labelList = filters.labels.map((l) => `"${l}"`).join(', ');
+    clauses.push(`labels IN (${labelList})`);
+  }
+  return `${clauses.join(' AND ')} ORDER BY created DESC`;
+}
+
 export class JiraConnector {
   private baseUrl: string;
   private authHeader: string;
@@ -77,20 +110,47 @@ export class JiraConnector {
     return data.values;
   }
 
+  /** Feature 009: Liste les sprints d'un projet via l'API Agile Jira */
+  async listSprints(): Promise<JiraSprint[]> {
+    try {
+      // Trouver le board du projet (API Agile — chemin différent de /rest/api/3)
+      const boardsRes = await fetch(
+        `${this.baseUrl}/rest/agile/1.0/board?projectKeyOrId=${this.projectKey}&maxResults=1`,
+        { headers: { Authorization: this.authHeader, Accept: 'application/json' } },
+      );
+      if (!boardsRes.ok) return [];
+      const boards = await boardsRes.json() as { values?: Array<{ id: number }> };
+      if (!boards.values?.length) return [];
+
+      const boardId = boards.values[0]!.id;
+      const sprintsRes = await fetch(
+        `${this.baseUrl}/rest/agile/1.0/board/${boardId}/sprint?state=active,future&maxResults=20`,
+        { headers: { Authorization: this.authHeader, Accept: 'application/json' } },
+      );
+      if (!sprintsRes.ok) return [];
+      const data = await sprintsRes.json() as { values?: JiraSprint[] };
+      return data.values ?? [];
+    } catch {
+      return []; // API Agile non disponible sur certaines instances
+    }
+  }
+
   /**
    * Importe les user stories du projet (type Story, maxResults = 100).
-   * Délai de 100ms entre les pages pour respecter le rate limit Jira (10 req/sec).
+   * Accepte des filtres optionnels pour enrichir le JQL.
    */
-  async fetchUserStories(teamId: string, connectionId: string): Promise<Omit<UserStory, 'id'>[]> {
+  async fetchUserStories(
+    teamId: string,
+    connectionId: string,
+    filters?: SyncFilters,
+  ): Promise<Omit<UserStory, 'id'>[]> {
     const stories: Omit<UserStory, 'id'>[] = [];
     let startAt = 0;
     const maxResults = 100;
     let total = Infinity;
 
     while (startAt < total) {
-      const jql = encodeURIComponent(
-        `project = "${this.projectKey}" AND issuetype = Story ORDER BY created DESC`,
-      );
+      const jql = encodeURIComponent(buildJql(this.projectKey, filters));
       const data = await this.fetch<{ issues: JiraIssue[]; total: number; startAt: number }>(
         `/search/jql?jql=${jql}&startAt=${startAt}&maxResults=${maxResults}&fields=summary,description,status,labels,assignee`,
       );
@@ -123,9 +183,11 @@ export class JiraConnector {
   }
 
   // V2: Writeback — met à jour description et/ou acceptance criteria dans Jira
+  // Fix 012: acFieldId permet de cibler le bon custom field AC par instance
   async updateStory(
     externalId: string,
     fields: { description?: string; acceptanceCriteria?: string },
+    acFieldId?: string | null,
   ): Promise<void> {
     const updateFields: Record<string, unknown> = {};
 
@@ -137,18 +199,20 @@ export class JiraConnector {
       };
     }
 
-    // Acceptance Criteria est un champ custom — tenter customfield_10016 (story points) n'est pas AC
-    // On utilise la convention Jira Cloud : champ texte dans les fields si disponible
     if (fields.acceptanceCriteria !== undefined) {
-      // Note: le nom exact du champ AC dépend de la configuration Jira de chaque équipe
-      // Le champ le plus courant est 'customfield_10016' mais varie selon les instances
-      // On met à jour 'description' avec AC appendé si le champ custom n'est pas connu
-      if (updateFields['description']) {
-        const existingDesc = (updateFields['description'] as { content: unknown[] }).content;
-        (updateFields['description'] as { content: unknown[] }).content = [
-          ...existingDesc,
-          { type: 'paragraph', content: [{ type: 'text', text: `\n\nCritères d'acceptance :\n${fields.acceptanceCriteria}` }] },
-        ];
+      if (acFieldId) {
+        // Fix 012: utiliser le custom field configuré pour cette instance Jira
+        updateFields[acFieldId] = fields.acceptanceCriteria;
+      } else {
+        // Fallback : append dans la description (comportement V1)
+        console.warn('[JiraConnector] ac_field_id not configured — appending AC to description');
+        if (updateFields['description']) {
+          const existingDesc = (updateFields['description'] as { content: unknown[] }).content;
+          (updateFields['description'] as { content: unknown[] }).content = [
+            ...existingDesc,
+            { type: 'paragraph', content: [{ type: 'text', text: `\n\nCritères d'acceptance :\n${fields.acceptanceCriteria}` }] },
+          ];
+        }
       }
     }
 

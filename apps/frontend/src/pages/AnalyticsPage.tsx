@@ -8,8 +8,27 @@ import { api } from '../lib/api.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface FeedbackStats {
+  total: number;
+  positive: number;
+  negative: number;
+  satisfactionRate: number | null;
+  topNegativeTags: Array<{ tag: string; count: number }>;
+}
+
+const TAG_LABELS: Record<string, string> = {
+  import_missing: 'Import manquant',
+  wrong_selector: 'Mauvais sélecteur',
+  incorrect_logic: 'Logique incorrecte',
+  pom_not_respected: 'POM non respecté',
+  data_not_externalized: 'Données non externalisées',
+  missing_edge_case: 'Edge case manquant',
+  other: 'Autre',
+};
+
 interface AnalyticsMetrics {
   period: { from: string; to: string };
+  feedback: FeedbackStats;
   counts: { analyses: number; generations: number; manualTestSets: number; manualTestCases: number };
   timeSaved: {
     totalMinutes: number;
@@ -250,6 +269,41 @@ export function AnalyticsPage() {
               </div>
             )}
           </div>
+
+          {/* Satisfaction / Feedback */}
+          {metrics.feedback.total > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">Satisfaction des générations</h2>
+              <div className="flex items-center gap-6 mb-3">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {metrics.feedback.satisfactionRate !== null ? `${metrics.feedback.satisfactionRate}%` : '—'}
+                  </div>
+                  <div className="text-xs text-gray-400">Taux de satisfaction</div>
+                </div>
+                <div className="flex gap-4 text-sm">
+                  <span className="flex items-center gap-1 text-green-700">
+                    👍 <b>{metrics.feedback.positive}</b> positifs
+                  </span>
+                  <span className="flex items-center gap-1 text-red-600">
+                    👎 <b>{metrics.feedback.negative}</b> négatifs
+                  </span>
+                </div>
+              </div>
+              {metrics.feedback.topNegativeTags.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Top problèmes signalés</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {metrics.feedback.topNegativeTags.map(({ tag, count }) => (
+                      <span key={tag} className="text-xs px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded-full">
+                        {TAG_LABELS[tag] ?? tag} ({count})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Highlights */}
           {(metrics.highlights.bestScoredUS || metrics.highlights.worstScoredUS || metrics.highlights.scoreTrendPercent !== null) && (

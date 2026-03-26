@@ -33,4 +33,7 @@ export interface LLMClientConfig {
 
 export interface LLMClient {
   complete(messages: LLMMessage[], options?: LLMOptions): Promise<LLMResponse>;
+  // Feature 010: embedding (optionnel — pas tous les providers le supportent)
+  embedSupported?(): boolean;
+  embed?(text: string): Promise<number[]>;
 }

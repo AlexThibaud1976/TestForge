@@ -54,12 +54,18 @@ export class WritebackService {
     if (!connection) throw new Error('Source connection not found');
 
     const contentBefore = [story.description, story.acceptanceCriteria].filter(Boolean).join('\n\n---\n\n');
-    const contentAfter = analysis.improvedVersion;
+
+    // Fix 012: utiliser improvedDescription / improvedAcceptanceCriteria séparés si disponibles
+    const improvedDesc = (analysis as unknown as Record<string, unknown>)['improvedDescription'] as string | null
+      ?? analysis.improvedVersion;
+    const improvedAC = (analysis as unknown as Record<string, unknown>)['improvedAcceptanceCriteria'] as string | null
+      ?? analysis.improvedVersion;
+    const contentAfter = [improvedDesc, improvedAC].filter(Boolean).join('\n\n---\n\n');
 
     const updateFields: { description?: string; acceptanceCriteria?: string } = {};
-    if (fields.description) updateFields.description = analysis.improvedVersion;
-    if (fields.acceptanceCriteria && story.acceptanceCriteria) {
-      updateFields.acceptanceCriteria = analysis.improvedVersion;
+    if (fields.description && improvedDesc) updateFields.description = improvedDesc;
+    if (fields.acceptanceCriteria && story.acceptanceCriteria && improvedAC) {
+      updateFields.acceptanceCriteria = improvedAC;
     }
 
     const credentials = JSON.parse(decrypt(connection.encryptedCredentials)) as Record<string, string>;
@@ -71,7 +77,8 @@ export class WritebackService {
         apiToken: credentials['apiToken']!,
         projectKey: connection.projectKey,
       });
-      await connector.updateStory(story.externalId, updateFields);
+      // Fix 012: passer acFieldId depuis la connexion source
+      await connector.updateStory(story.externalId, updateFields, connection.acFieldId ?? null);
     } else if (connection.type === 'azure_devops') {
       const connector = new ADOConnector({
         organizationUrl: connection.baseUrl,

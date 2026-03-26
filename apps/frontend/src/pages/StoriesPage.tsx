@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { SprintScoreboard, type AnalysisResultItem, type BatchStats } from '../components/SprintScoreboard.js';
+import { DuplicatesPanel, type DuplicatePair } from '../components/DuplicatesPanel.js';
+import { SyncDialog, type SyncFilters } from '../components/SyncDialog.js';
 
 interface UserStory {
   id: string;
@@ -51,6 +53,14 @@ export function StoriesPage() {
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
+  // Feature 010: doublons
+  const [duplicates, setDuplicates] = useState<DuplicatePair[]>([]);
+  const [showDuplicates, setShowDuplicates] = useState(false);
+  // Feature 009: sync dialog
+  const [syncDialog, setSyncDialog] = useState<string | null>(null); // connectionId
+  // Feature 009: filtres locaux
+  const [localSprintFilter, setLocalSprintFilter] = useState('');
+  const [localLabelFilter, setLocalLabelFilter] = useState('');
 
   const fetchStories = useCallback(async () => {
     setLoading(true);
@@ -69,16 +79,23 @@ export function StoriesPage() {
 
   useEffect(() => {
     api.get<Connection[]>('/api/connections').then(setConnections).catch(() => {});
+    api.get<DuplicatePair[]>('/api/duplicates').then(setDuplicates).catch(() => null);
   }, []);
 
   useEffect(() => { void fetchStories(); }, [fetchStories]);
 
-  const handleSync = async (connectionId: string) => {
+  const handleSync = async (connectionId: string, filters?: SyncFilters) => {
+    setSyncDialog(null);
     setSyncing(connectionId);
     try {
-      const result = await api.post<{ synced: number }>('/api/user-stories/sync', { connectionId });
+      const body = filters && Object.keys(filters).length > 0
+        ? { connectionId, filters }
+        : { connectionId };
+      const result = await api.post<{ synced: number }>('/api/user-stories/sync', body);
       alert(`${result.synced} user stories synchronisées`);
       void fetchStories();
+      // Feature 010: rafraîchir les doublons après sync
+      api.get<DuplicatePair[]>('/api/duplicates').then(setDuplicates).catch(() => null);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Erreur de synchronisation');
     } finally {
@@ -117,12 +134,55 @@ export function StoriesPage() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
+  // Feature 009: filtres locaux sur les US déjà chargées
+  const filteredStories = stories.filter((s) => {
+    if (localSprintFilter && !s.labels.some((l) => l.toLowerCase().includes(localSprintFilter.toLowerCase()))) {
+      // Filtrage approximatif par label (le sprint n'est pas stocké directement)
+      if (!s.title.toLowerCase().includes(localSprintFilter.toLowerCase()) &&
+          !s.description?.toLowerCase().includes(localSprintFilter.toLowerCase())) return false;
+    }
+    if (localLabelFilter && !s.labels.some((l) => l.toLowerCase().includes(localLabelFilter.toLowerCase()))) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <div className="p-6">
+      {/* Feature 009: Sync dialog avec filtres */}
+      {syncDialog && (
+        <SyncDialog
+          connectionId={syncDialog}
+          connectionName={connections.find((c) => c.id === syncDialog)?.name ?? ''}
+          loading={syncing === syncDialog}
+          onSync={(filters) => void handleSync(syncDialog, filters)}
+          onCancel={() => setSyncDialog(null)}
+        />
+      )}
+
+      {/* Feature 010: Doublons panel */}
+      {showDuplicates && (
+        <DuplicatesPanel
+          pairs={duplicates}
+          onIgnored={(id) => setDuplicates((prev) => prev.filter((p) => p.id !== id))}
+          onClose={() => setShowDuplicates(false)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">User Stories</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-gray-900">User Stories</h1>
+            {duplicates.length > 0 && (
+              <button
+                onClick={() => setShowDuplicates(true)}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-300 rounded-full hover:bg-orange-100 font-medium"
+              >
+                ⚠️ Doublons potentiels ({duplicates.length})
+              </button>
+            )}
+          </div>
           <p className="text-sm text-gray-500 mt-1">{total} story{total !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -138,7 +198,9 @@ export function StoriesPage() {
             </button>
           )}
           {connections.map((conn) => (
-            <button key={conn.id} onClick={() => void handleSync(conn.id)} disabled={syncing === conn.id}
+            <button key={conn.id}
+              onClick={() => setSyncDialog(conn.id)}
+              disabled={syncing === conn.id}
               className="px-3 py-2 text-sm font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 disabled:opacity-50">
               {syncing === conn.id ? '↻ Sync...' : `↻ ${conn.name}`}
             </button>
@@ -179,6 +241,13 @@ export function StoriesPage() {
           <option value="">Tous statuts</option>
           {['To Do', 'In Progress', 'Done', 'Active', 'New', 'Resolved'].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+        {/* Feature 009: filtres locaux */}
+        <input type="text" placeholder="Sprint..." value={localSprintFilter}
+          onChange={(e) => setLocalSprintFilter(e.target.value)}
+          className="w-28 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input type="text" placeholder="Label..." value={localLabelFilter}
+          onChange={(e) => setLocalLabelFilter(e.target.value)}
+          className="w-28 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
         {connections.length > 1 && (
           <select value={connectionFilter} onChange={(e) => { setConnectionFilter(e.target.value); setPage(1); }}
             className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -220,7 +289,7 @@ export function StoriesPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {stories.map((story) => (
+          {filteredStories.map((story) => (
             <UserStoryCard key={story.id} story={story}
               selected={selected.has(story.id)}
               onSelect={() => toggleSelect(story.id)}

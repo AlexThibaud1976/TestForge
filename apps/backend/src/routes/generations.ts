@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { generations, generatedFiles, gitPushes, xrayTests, adoTestCases, xrayConfigs, analyses, userStories, sourceConnections } from '../db/schema.js';
+import { generations, generatedFiles, gitPushes, xrayTests, adoTestCases, xrayConfigs, analyses, userStories, sourceConnections, generationFeedbacks } from '../db/schema.js';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import { GenerationService } from '../services/generation/GenerationService.js';
 import { GitPushService } from '../services/git/GitPushService.js';
@@ -24,6 +24,9 @@ router.post('/', requireAuth, async (req: Request, res) => {
     framework: z.enum(['playwright', 'selenium']).default('playwright'),
     language: z.enum(['typescript', 'javascript', 'python', 'java', 'csharp']).default('typescript'),
     manualTestSetId: z.string().uuid().optional(),
+    // Feature 008
+    incremental: z.boolean().default(false),
+    previousGenerationId: z.string().uuid().optional(),
   }).safeParse(req.body);
 
   if (!parsed.success) {
@@ -32,7 +35,6 @@ router.post('/', requireAuth, async (req: Request, res) => {
   }
 
   try {
-    // Créer le record pending et retourner immédiatement
     const pending = await generationService.createPending(
       parsed.data.analysisId,
       teamId,
@@ -40,14 +42,27 @@ router.post('/', requireAuth, async (req: Request, res) => {
       parsed.data.framework,
       parsed.data.language,
       parsed.data.manualTestSetId,
+      parsed.data.incremental,
     );
 
-    // Lancer la génération en arrière-plan — Realtime notifie le frontend
-    void generationService.processGeneration(pending.id, pending.analysisId, teamId,
-      parsed.data.useImprovedVersion, parsed.data.framework, parsed.data.language,
-      parsed.data.manualTestSetId);
+    if (parsed.data.incremental && parsed.data.previousGenerationId) {
+      // Régénération incrémentale (Feature 008)
+      void generationService.processIncrementalGeneration(
+        pending.id,
+        parsed.data.previousGenerationId,
+        pending.analysisId,
+        teamId,
+        parsed.data.framework,
+        parsed.data.language,
+      );
+    } else {
+      // Génération standard
+      void generationService.processGeneration(pending.id, pending.analysisId, teamId,
+        parsed.data.useImprovedVersion, parsed.data.framework, parsed.data.language,
+        parsed.data.manualTestSetId);
+    }
 
-    res.status(201).json(pending); // { id, status: 'pending' }
+    res.status(201).json(pending);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Generation failed';
     const status = message.includes('not found') ? 404 : 500;
@@ -207,6 +222,59 @@ router.post('/:id/ado-test-case', requireAuth, async (req: Request, res) => {
     console.error('[ado-test-case]', message);
     res.status(500).json({ error: message });
   }
+});
+
+// ─── Feature 007: Feedback ────────────────────────────────────────────────────
+
+const feedbackSchema = z.object({
+  rating: z.enum(['positive', 'negative']),
+  tags: z.array(z.enum([
+    'import_missing', 'wrong_selector', 'incorrect_logic',
+    'pom_not_respected', 'data_not_externalized', 'missing_edge_case', 'other',
+  ])).default([]),
+  comment: z.string().max(500).optional(),
+});
+
+// POST /api/generations/:id/feedback — créer ou mettre à jour un feedback
+router.post('/:id/feedback', requireAuth, async (req: Request, res) => {
+  const { teamId, userId } = req as AuthenticatedRequest;
+  const generationId = req.params['id'] as string;
+  const parsed = feedbackSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const { rating, tags, comment } = parsed.data;
+
+  try {
+    // Upsert : conflict sur (generation_id, user_id) → update
+    const [feedback] = await db
+      .insert(generationFeedbacks)
+      .values({ generationId, teamId, userId, rating, tags, comment: comment ?? null })
+      .onConflictDoUpdate({
+        target: [generationFeedbacks.generationId, generationFeedbacks.userId],
+        set: { rating, tags, comment: comment ?? null, updatedAt: new Date() },
+      })
+      .returning();
+    res.status(201).json(feedback);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// GET /api/generations/:id/feedback — feedback de l'utilisateur courant
+router.get('/:id/feedback', requireAuth, async (req: Request, res) => {
+  const { userId } = req as AuthenticatedRequest;
+  const generationId = req.params['id'] as string;
+
+  const [feedback] = await db
+    .select()
+    .from(generationFeedbacks)
+    .where(and(
+      eq(generationFeedbacks.generationId, generationId),
+      eq(generationFeedbacks.userId, userId),
+    ))
+    .limit(1);
+
+  res.json(feedback ?? null);
 });
 
 export default router;

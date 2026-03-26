@@ -175,7 +175,7 @@ export function ConnectionsPage() {
 // ─── Formulaire Jira ──────────────────────────────────────────────────────────
 
 function JiraForm({ onCreated, onCancel }: { onCreated: (c: Connection) => void; onCancel: () => void }) {
-  const [form, setForm] = useState({ name: '', baseUrl: '', email: '', apiToken: '', projectKey: '', xrayClientId: '', xrayClientSecret: '' });
+  const [form, setForm] = useState({ name: '', baseUrl: '', email: '', apiToken: '', projectKey: '', xrayClientId: '', xrayClientSecret: '', acFieldId: '' });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -195,6 +195,7 @@ function JiraForm({ onCreated, onCancel }: { onCreated: (c: Connection) => void;
           xrayClientId: form.xrayClientId,
           xrayClientSecret: form.xrayClientSecret,
         } : {}),
+        ...(form.acFieldId ? { acFieldId: form.acFieldId } : {}),
       };
       const conn = await api.post<Connection>('/api/connections', body);
       onCreated(conn);
@@ -223,6 +224,14 @@ function JiraForm({ onCreated, onCancel }: { onCreated: (c: Connection) => void;
           <OptionalField label="Client Secret" value={form.xrayClientSecret} onChange={(v) => setForm({ ...form, xrayClientSecret: v })} placeholder="secret..." type="password" />
         </div>
         <p className="text-xs text-blue-500 mt-1">Obtenez vos clés dans Xray Cloud → API Keys. Laissez vide si non utilisé.</p>
+      </div>
+
+      <div className="border-t border-blue-200 pt-3">
+        <p className="text-xs font-medium text-blue-700 mb-2">🔧 Champ AC Jira (optionnel)</p>
+        <OptionalField label="ID du custom field Acceptance Criteria" value={form.acFieldId}
+          onChange={(v) => setForm((f) => ({ ...f, acFieldId: v }))}
+          placeholder="Ex: customfield_10020 — laisser vide si inconnu" />
+        <p className="text-xs text-blue-500 mt-1">Configurez ce champ pour un writeback AC précis. Sinon les AC sont appendés dans la description.</p>
       </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}

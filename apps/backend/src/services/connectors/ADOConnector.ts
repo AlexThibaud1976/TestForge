@@ -31,6 +31,34 @@ interface ADOWorkItem {
 
 const API_VERSION = '7.1';
 
+// Feature 009: SyncFilters (partagé avec JiraConnector via import ou redéclaré ici)
+export interface ADOIteration {
+  id: string;
+  name: string;
+  path: string;
+  attributes?: { startDate?: string; finishDate?: string; timeFrame?: string };
+}
+
+function buildWiql(project: string, filters?: { sprint?: string; statuses?: string[]; labels?: string[] }): string {
+  const conditions = [
+    `[System.TeamProject] = '${project}'`,
+    `[System.WorkItemType] = 'User Story'`,
+    `[System.State] <> 'Removed'`,
+  ];
+  if (filters?.sprint) {
+    conditions.push(`[System.IterationPath] UNDER '${project}\\${filters.sprint}'`);
+  }
+  if (filters?.statuses && filters.statuses.length > 0) {
+    const stateList = filters.statuses.map((s) => `'${s}'`).join(', ');
+    conditions.push(`[System.State] IN (${stateList})`);
+  }
+  if (filters?.labels && filters.labels.length > 0) {
+    // ADO utilise les tags (séparés par ";") — filtre approximatif sur le premier label
+    conditions.push(`[System.Tags] CONTAINS '${filters.labels[0]}'`);
+  }
+  return `SELECT [System.Id] FROM WorkItems WHERE ${conditions.join(' AND ')} ORDER BY [System.ChangedDate] DESC`;
+}
+
 export class ADOConnector {
   private orgUrl: string;
   private project: string;
@@ -95,21 +123,31 @@ export class ADOConnector {
     return data.value;
   }
 
+  /** Feature 009: Liste les itérations (sprints) du projet */
+  async listIterations(): Promise<ADOIteration[]> {
+    try {
+      const data = await this.fetch<{ value: ADOIteration[] }>(
+        `${this.orgUrl}/${this.project}/_apis/work/teamsettings/iterations?api-version=${API_VERSION}`,
+      );
+      return data.value ?? [];
+    } catch {
+      return [];
+    }
+  }
+
   /**
    * Importe les User Stories du projet via WIQL.
-   * Récupère les champs : Title, Description, Acceptance Criteria, State, Tags.
+   * Accepte des filtres optionnels pour enrichir le WIQL.
    */
-  async fetchUserStories(teamId: string, connectionId: string): Promise<Omit<UserStory, 'id'>[]> {
+  async fetchUserStories(
+    teamId: string,
+    connectionId: string,
+    filters?: { sprint?: string; statuses?: string[]; labels?: string[] },
+  ): Promise<Omit<UserStory, 'id'>[]> {
     // Étape 1 : WIQL query pour obtenir les IDs
     const wiqlResult = await this.post<{ workItems: ADOWorkItemRef[] }>(
       `${this.orgUrl}/${this.project}/_apis/wit/wiql?api-version=${API_VERSION}`,
-      {
-        query: `SELECT [System.Id] FROM WorkItems
-                WHERE [System.TeamProject] = '${this.project}'
-                  AND [System.WorkItemType] = 'User Story'
-                  AND [System.State] <> 'Removed'
-                ORDER BY [System.ChangedDate] DESC`,
-      },
+      { query: buildWiql(this.project, filters) },
     );
 
     if (wiqlResult.workItems.length === 0) return [];

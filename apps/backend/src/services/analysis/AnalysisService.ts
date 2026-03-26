@@ -23,6 +23,9 @@ interface LLMAnalysisResponse {
   };
   suggestions: AnalysisSuggestion[];
   improvedVersion: string;
+  // Fix 012: champs séparés
+  improvedDescription?: string | undefined;
+  improvedAcceptanceCriteria?: string | undefined;
 }
 
 export interface AnalysisResult {
@@ -123,6 +126,9 @@ export class AnalysisService {
         scoreAcceptanceCriteria: parsed.dimensions.acceptanceCriteria,
         suggestions: parsed.suggestions,
         improvedVersion: parsed.improvedVersion || null,
+        // Fix 012: champs séparés description / AC
+        improvedDescription: parsed.improvedDescription ?? null,
+        improvedAcceptanceCriteria: parsed.improvedAcceptanceCriteria ?? null,
         llmProvider: llmConfig.provider,
         llmModel: llmConfig.model,
         promptVersion: ANALYSIS_PROMPT_VERSION,
@@ -183,11 +189,29 @@ export class AnalysisService {
       }))
       .filter((s) => s.issue && s.suggestion);
 
+    const improvedVersion = typeof raw['improvedVersion'] === 'string' ? raw['improvedVersion'] : '';
+
+    // Fix 012: extraire les champs séparés si le LLM les retourne
+    let improvedDescription = typeof raw['improvedDescription'] === 'string' ? raw['improvedDescription'] : undefined;
+    let improvedAcceptanceCriteria = typeof raw['improvedAcceptanceCriteria'] === 'string' ? raw['improvedAcceptanceCriteria'] : undefined;
+
+    // Fallback : si le LLM retourne le format ancien (improvedVersion unique), tenter de le splitter
+    if (!improvedDescription && improvedVersion) {
+      const acSeparators = /\n#{1,3}\s*(?:Critères d['']acceptance|Acceptance Criteria|AC)\s*:?\n/i;
+      const parts = improvedVersion.split(acSeparators);
+      if (parts.length >= 2) {
+        improvedDescription = parts[0]!.trim();
+        improvedAcceptanceCriteria = parts.slice(1).join('\n').trim();
+      }
+    }
+
     return {
       scoreGlobal,
       dimensions: { clarity, completeness, testability, edgeCases, acceptanceCriteria },
       suggestions,
-      improvedVersion: typeof raw['improvedVersion'] === 'string' ? raw['improvedVersion'] : '',
+      improvedVersion,
+      improvedDescription,
+      improvedAcceptanceCriteria,
     };
   }
 
