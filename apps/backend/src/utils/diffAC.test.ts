@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { diffAcceptanceCriteria } from './diffAC.js';
+import { diffAcceptanceCriteria, formatDiffForPrompt } from './diffAC.js';
 import { computeStoryHash } from './storyHash.js';
 
 describe('diffAcceptanceCriteria', () => {
@@ -48,6 +48,47 @@ describe('diffAcceptanceCriteria', () => {
     const newAC = 'User can login\nUser sees dashboard\nUser can logout';
     const diff = diffAcceptanceCriteria(oldAC, newAC);
     expect(diff.added).toHaveLength(1);
+  });
+});
+
+describe('formatDiffForPrompt', () => {
+  it('returns empty string when there are no changes', () => {
+    const diff = { added: [], removed: [], modified: [], unchanged: ['AC 1'], changePercent: 0 };
+    expect(formatDiffForPrompt(diff)).toBe('');
+  });
+
+  it('includes added section with "+" lines', () => {
+    const diff = { added: ['New AC'], removed: [], modified: [], unchanged: [], changePercent: 100 };
+    const output = formatDiffForPrompt(diff);
+    expect(output).toContain('AJOUTÉS');
+    expect(output).toContain('+ New AC');
+  });
+
+  it('includes removed section with "-" lines', () => {
+    const diff = { added: [], removed: ['Old AC'], modified: [], unchanged: [], changePercent: 100 };
+    const output = formatDiffForPrompt(diff);
+    expect(output).toContain('SUPPRIMÉS');
+    expect(output).toContain('- Old AC');
+  });
+
+  it('includes unchanged section when there are both changes and unchanged items', () => {
+    const diff = { added: ['New AC'], removed: [], modified: [], unchanged: ['Kept AC'], changePercent: 50 };
+    const output = formatDiffForPrompt(diff);
+    expect(output).toContain('INCHANGÉS');
+    expect(output).toContain('ne doivent PAS être modifiés');
+  });
+
+  it('does not show unchanged section when there are only unchanged items', () => {
+    const diff = { added: [], removed: [], modified: [], unchanged: ['AC 1', 'AC 2'], changePercent: 0 };
+    expect(formatDiffForPrompt(diff)).not.toContain('INCHANGÉS');
+  });
+
+  it('shows all three sections when adds, removes and unchanged coexist', () => {
+    const diff = { added: ['AC new'], removed: ['AC old'], modified: [], unchanged: ['AC kept'], changePercent: 67 };
+    const output = formatDiffForPrompt(diff);
+    expect(output).toContain('AJOUTÉS');
+    expect(output).toContain('SUPPRIMÉS');
+    expect(output).toContain('INCHANGÉS');
   });
 });
 
