@@ -14,7 +14,12 @@ if (!connectionString) {
 // Format : postgresql://postgres.[ref]:[password]@aws-0-eu-west-3.pooler.supabase.com:6543/postgres
 const dbUrl = process.env['DATABASE_URL'] ?? connectionString;
 
-const client = postgres(dbUrl, { prepare: false }); // prepare: false requis pour Supabase pooler
+const client = postgres(dbUrl, {
+  prepare: false,  // requis pour Supabase pooler
+  max: 5,          // évite de saturer les connexions Supabase (plan gratuit = 2 directes, pooler = plus)
+  idle_timeout: 20,
+  connect_timeout: 10,
+});
 export const db = drizzle(client, { schema });
 
 export type Database = typeof db;
