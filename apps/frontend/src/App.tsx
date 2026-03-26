@@ -14,6 +14,7 @@ import { TeamPage } from './pages/TeamPage.js';
 import { BillingPage } from './pages/BillingPage.js';
 import { GitConfigPage } from './pages/GitConfigPage.js';
 import { AnalyticsPage } from './pages/AnalyticsPage.js';
+import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage.js';
 import { PomRegistryPage } from './pages/PomRegistryPage.js';
 import { PomTemplatesPage } from './pages/PomTemplatesPage.js';
 import { SuperAdminPage } from './pages/SuperAdminPage.js';
@@ -26,6 +27,7 @@ function ProtectedRoutes() {
         <Route path="/stories" element={<StoriesPage />} />
         <Route path="/stories/:id" element={<StoryDetailPage />} />
         <Route path="/history" element={<HistoryPage />} />
+        <Route path="/analytics" element={<AnalyticsDashboardPage />} />
         <Route path="/settings/connections" element={<ConnectionsPage />} />
         <Route path="/settings/llm" element={<LLMConfigPage />} />
         <Route path="/settings/team" element={<TeamPage />} />

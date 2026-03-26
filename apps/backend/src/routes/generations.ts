@@ -88,6 +88,47 @@ router.get('/', requireAuth, async (req: Request, res) => {
   res.json(rows);
 });
 
+// GET /api/generations/history — vue arborescente enrichie (DOIT être AVANT /:id)
+router.get('/history', requireAuth, async (req: Request, res) => {
+  const { teamId } = req as AuthenticatedRequest;
+  const connectionId = req.query['connectionId'] as string | undefined;
+
+  const conditions = [eq(generations.teamId, teamId)];
+  if (connectionId) {
+    conditions.push(eq(userStories.connectionId, connectionId));
+  }
+
+  const rows = await db
+    .select({
+      id: generations.id,
+      analysisId: generations.analysisId,
+      framework: generations.framework,
+      language: generations.language,
+      usedImprovedVersion: generations.usedImprovedVersion,
+      llmProvider: generations.llmProvider,
+      llmModel: generations.llmModel,
+      status: generations.status,
+      durationMs: generations.durationMs,
+      createdAt: generations.createdAt,
+      // JOIN enrichi
+      userStoryId: userStories.id,
+      userStoryTitle: userStories.title,
+      userStoryExternalId: userStories.externalId,
+      connectionId: sourceConnections.id,
+      connectionName: sourceConnections.name,
+      connectionType: sourceConnections.type,
+    })
+    .from(generations)
+    .leftJoin(analyses, eq(generations.analysisId, analyses.id))
+    .leftJoin(userStories, eq(analyses.userStoryId, userStories.id))
+    .leftJoin(sourceConnections, eq(userStories.connectionId, sourceConnections.id))
+    .where(and(...conditions))
+    .orderBy(desc(generations.createdAt))
+    .limit(50);
+
+  res.json(rows);
+});
+
 // GET /api/generations/:id — avec fichiers
 router.get('/:id', requireAuth, async (req: Request, res) => {
   const { teamId } = req as AuthenticatedRequest;

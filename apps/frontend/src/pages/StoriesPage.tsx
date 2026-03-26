@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useConnectionFilter, type Connection } from '../hooks/useConnectionFilter.js';
 import { ConnectionBadge } from '../components/ConnectionBadge.js';
-import { SprintScoreboard, type AnalysisResultItem, type BatchStats } from '../components/SprintScoreboard.js';
+import { BatchAnalysisModal } from '../components/batch/BatchAnalysisModal.js';
 import { DuplicatesPanel, type DuplicatePair } from '../components/DuplicatesPanel.js';
 import { SyncDialog, type SyncFilters } from '../components/SyncDialog.js';
 
@@ -25,11 +25,6 @@ interface PaginatedResponse {
   pageSize: number;
 }
 
-interface BatchResult {
-  results: AnalysisResultItem[];
-  stats: BatchStats;
-}
-
 const PAGE_SIZE = 20;
 
 export function StoriesPage() {
@@ -44,16 +39,15 @@ export function StoriesPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  // Batch
+  // Sélection + modal batch
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [batchRunning, setBatchRunning] = useState(false);
-  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
-  const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+
   // Feature 010: doublons
   const [duplicates, setDuplicates] = useState<DuplicatePair[]>([]);
   const [showDuplicates, setShowDuplicates] = useState(false);
   // Feature 009: sync dialog
-  const [syncDialog, setSyncDialog] = useState<string | null>(null); // connectionId
+  const [syncDialog, setSyncDialog] = useState<string | null>(null);
   // Feature 009: filtres locaux
   const [localSprintFilter, setLocalSprintFilter] = useState('');
   const [localLabelFilter, setLocalLabelFilter] = useState('');
@@ -89,7 +83,6 @@ export function StoriesPage() {
       const result = await api.post<{ synced: number }>('/api/user-stories/sync', body);
       alert(`${result.synced} user stories synchronisées`);
       void fetchStories();
-      // Feature 010: rafraîchir les doublons après sync
       api.get<DuplicatePair[]>('/api/duplicates').then(setDuplicates).catch(() => null);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Erreur de synchronisation');
@@ -110,23 +103,6 @@ export function StoriesPage() {
     setSelected(selected.size === stories.length ? new Set() : new Set(stories.map((s) => s.id)));
   };
 
-  const handleBatchAnalyze = async () => {
-    const ids = selected.size > 0 ? Array.from(selected) : stories.map((s) => s.id);
-    if (ids.length === 0) return;
-    setBatchRunning(true);
-    setBatchProgress({ done: 0, total: ids.length });
-    setBatchResult(null);
-    try {
-      const result = await api.post<BatchResult>('/api/analyses/batch', { userStoryIds: ids });
-      setBatchResult(result);
-      setBatchProgress({ done: result.stats.succeeded + result.stats.failed, total: ids.length });
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Erreur lors du batch');
-    } finally {
-      setBatchRunning(false);
-    }
-  };
-
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   // Feature 009: filtres locaux sur les US déjà chargées
@@ -141,11 +117,10 @@ export function StoriesPage() {
     return true;
   });
 
-  const batchLabel = selected.size > 0
-    ? `la sélection (${selected.size})`
-    : connectionId
-      ? `connexion (${total} stories)`
-      : 'tout le sprint';
+  // Stories à analyser en batch (sélection ou toutes les stories affichées)
+  const batchStories = selected.size > 0
+    ? filteredStories.filter((s) => selected.has(s.id))
+    : filteredStories;
 
   return (
     <div className="p-6">
@@ -169,6 +144,14 @@ export function StoriesPage() {
         />
       )}
 
+      {/* Modal d'analyse batch */}
+      {batchModalOpen && (
+        <BatchAnalysisModal
+          stories={batchStories.map((s) => ({ id: s.id, title: s.title, externalId: s.externalId }))}
+          onClose={() => { setBatchModalOpen(false); void fetchStories(); }}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
@@ -186,15 +169,12 @@ export function StoriesPage() {
           <p className="text-sm text-gray-500 mt-1">{total} story{total !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {stories.length > 0 && (
+          {filteredStories.length > 0 && (
             <button
-              onClick={() => void handleBatchAnalyze()}
-              disabled={batchRunning}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              onClick={() => setBatchModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
-              {batchRunning ? (
-                <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" /> {batchProgress ? `${batchProgress.done}/${batchProgress.total}` : '...'}</>
-              ) : `📊 Analyser ${batchLabel}`}
+              📊 Analyser ({batchStories.length} stories)
             </button>
           )}
           {connections.map((conn) => (
@@ -207,29 +187,6 @@ export function StoriesPage() {
           ))}
         </div>
       </div>
-
-      {/* Progress bar */}
-      {batchRunning && batchProgress && (
-        <div className="mb-4">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Analyse en cours...</span>
-            <span>{batchProgress.done}/{batchProgress.total}</span>
-          </div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 rounded-full transition-all"
-              style={{ width: `${Math.round((batchProgress.done / batchProgress.total) * 100)}%` }} />
-          </div>
-        </div>
-      )}
-
-      {/* Scoreboard */}
-      {batchResult && !batchRunning && (
-        <SprintScoreboard
-          results={batchResult.results}
-          stats={batchResult.stats}
-          stories={stories.map((s) => ({ id: s.id, externalId: s.externalId, title: s.title }))}
-        />
-      )}
 
       {/* Filtres */}
       <div className="flex gap-3 mb-3 flex-wrap">

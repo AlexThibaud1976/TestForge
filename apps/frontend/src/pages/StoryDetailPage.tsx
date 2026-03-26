@@ -18,6 +18,7 @@ import { TestPreview } from '../components/TestPreview.js';
 import { ManualTestGenerateButton } from '../components/ManualTestGenerateButton.js';
 import { ManualTestValidateButton } from '../components/ManualTestValidateButton.js';
 import { ManualTestPushButton } from '../components/ManualTestPushButton.js';
+import { DiffViewer } from '../components/diff/DiffViewer.js';
 import type { ManualTestSet } from '@testforge/shared-types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ export function StoryDetailPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [activeVersion, setActiveVersion] = useState<'original' | 'improved'>('original');
+  const [activeVersion, setActiveVersion] = useState<'original' | 'improved' | 'diff'>('original');
 
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [generationState, setGenerationState] = useState<GenerationState>('idle');
@@ -247,13 +248,24 @@ export function StoryDetailPage() {
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeVersion === 'improved' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                     ✨ Version améliorée
                   </button>
+                  <button onClick={() => setActiveVersion('diff')}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeVersion === 'diff' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                    🔀 Diff
+                  </button>
                 </div>
               )}
 
               <Card title="Description">
-                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                  {displayText || <span className="italic text-gray-400">Aucune description</span>}
-                </p>
+                {activeVersion === 'diff' && analysis?.improvedVersion ? (
+                  <DiffViewer
+                    original={story.description ?? ''}
+                    improved={analysis.improvedVersion}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                    {displayText || <span className="italic text-gray-400">Aucune description</span>}
+                  </p>
+                )}
               </Card>
 
               {story.acceptanceCriteria && (
@@ -515,11 +527,20 @@ export function StoryDetailPage() {
                   )}
                 </div>
                 <p className="text-sm font-medium text-gray-800 mb-2">{story.title}</p>
-                <p className="text-xs text-gray-500 line-clamp-4 leading-relaxed">
-                  {activeVersion === 'improved' && analysis?.improvedVersion
-                    ? analysis.improvedVersion
-                    : story.description}
-                </p>
+                {activeVersion === 'diff' && analysis?.improvedVersion ? (
+                  <div className="text-xs">
+                    <DiffViewer
+                      original={story.description ?? ''}
+                      improved={analysis.improvedVersion}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 line-clamp-4 leading-relaxed">
+                    {activeVersion === 'improved' && analysis?.improvedVersion
+                      ? analysis.improvedVersion
+                      : story.description}
+                  </p>
+                )}
                 {analysis?.improvedVersion && (
                   <div className="mt-3 flex gap-2">
                     <button onClick={() => setActiveVersion('original')}
@@ -529,6 +550,10 @@ export function StoryDetailPage() {
                     <button onClick={() => setActiveVersion('improved')}
                       className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${activeVersion === 'improved' ? 'bg-white border-blue-300 text-blue-700 shadow-sm' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
                       ✨ Améliorée
+                    </button>
+                    <button onClick={() => setActiveVersion('diff')}
+                      className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${activeVersion === 'diff' ? 'bg-white border-purple-300 text-purple-700 shadow-sm' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                      🔀 Diff
                     </button>
                   </div>
                 )}

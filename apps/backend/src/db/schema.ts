@@ -23,6 +23,7 @@ export const teams = pgTable('teams', {
   stripeCustomerId: text('stripe_customer_id'),
   suspendedAt: timestamp('suspended_at', { withTimezone: true }), // V2: null = active
   analyticsCoefficients: jsonb('analytics_coefficients'), // 006: { analysis, generation, manualTest } minutes
+  manualTestMinutes: smallint('manual_test_minutes').notNull().default(30), // 016: temps moyen par test manuel (ROI)
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

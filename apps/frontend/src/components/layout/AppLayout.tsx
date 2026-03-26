@@ -4,6 +4,8 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { supabase } from '../../lib/supabase.js';
 import { OnboardingBanner } from '../onboarding/OnboardingBanner.js';
+import { OnboardingWizard } from '../onboarding/OnboardingWizard.js';
+import { useOnboardingState } from '../../hooks/useOnboardingState.js';
 import { Logo } from '../ui/Logo.js';
 import {
   LayoutGrid,
@@ -34,6 +36,7 @@ const navSections: Array<{ label: string | null; items: NavItem[] }> = [
     items: [
       { to: '/stories',  label: 'User Stories', Icon: LayoutGrid },
       { to: '/history',  label: 'Historique',   Icon: Clock },
+      { to: '/analytics', label: 'Dashboard',    Icon: BarChart2 },
     ],
   },
   {
@@ -59,11 +62,20 @@ const navSections: Array<{ label: string | null; items: NavItem[] }> = [
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth();
+  const { showWizard, hasConnection, hasLLM, hasFirstAnalysis } = useOnboardingState();
 
   const handleSignOut = () => void supabase.auth.signOut();
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {showWizard && (
+        <OnboardingWizard
+          hasConnection={hasConnection}
+          hasLLM={hasLLM}
+          hasFirstAnalysis={hasFirstAnalysis}
+          onComplete={() => window.location.reload()}
+        />
+      )}
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
         {/* Logo */}

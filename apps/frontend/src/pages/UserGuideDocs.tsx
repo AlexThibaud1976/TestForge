@@ -23,6 +23,8 @@ const CATEGORIES = [
       { id: "manual-tests", title: "Tests manuels", icon: "📋" },
       { id: "generate", title: "Générer les tests auto", icon: "⚡" },
       { id: "push", title: "Push Git & intégrations", icon: "📤" },
+      { id: "history", title: "Historique", icon: "🕐" },
+      { id: "analytics-dashboard", title: "Analytics & ROI", icon: "📊" },
     ],
   },
   {
@@ -298,7 +300,7 @@ const PAGES_CONTENT: Record<string, () => JSX.Element> = {
       <FadeIn><Step n={1} title="Créez votre espace équipe">Inscrivez-vous sur <strong>testforge.dev</strong> avec votre email pro. Vous obtenez un essai gratuit de 14 jours avec accès à toutes les fonctionnalités Pro. Choisissez un nom pour votre espace — c'est l'environnement partagé de votre équipe.</Step></FadeIn>
       <FadeIn delay={0.1}><Step n={2} title="Connectez votre source">L'assistant d'onboarding vous guide : choisissez Jira ou Azure DevOps, collez votre token, sélectionnez le projet. TestForge teste la connexion en temps réel — si ça passe, vous êtes prêt. <span style={{ color: "#2563eb", cursor: "pointer" }} onClick={() => window.__setPage?.("connect")}>Détails sur les tokens →</span></Step></FadeIn>
       <FadeIn delay={0.2}><Step n={3} title="Analysez et générez">Synchronisez vos US, ouvrez-en une, cliquez <strong>"Analyser"</strong>. En 10 secondes, vous avez un score de qualité et des suggestions. Cliquez <strong>"Générer les tests"</strong> — en 30 secondes, vous avez du code de test structuré (Playwright, Selenium ou Cypress), prêt à copier.</Step></FadeIn>
-      <FadeIn delay={0.3}><Tip type="info">L'onboarding guidé s'affiche à la première connexion. Il vous prend par la main sur les 3 étapes. Si vous le fermez par accident, retrouvez-le dans Paramètres → Connexions.</Tip></FadeIn>
+      <FadeIn delay={0.3}><Tip type="info">L'onboarding guidé s'affiche automatiquement à la première connexion. C'est un <strong>wizard modal interactif</strong> : formulaires inline pour configurer la connexion, le LLM, et lancer la première analyse en 3 étapes. Il reste visible tant que les 3 étapes ne sont pas complétées. Une fois terminé, confetti 🎉</Tip></FadeIn>
     </>
   ),
   connect: () => (
@@ -330,6 +332,7 @@ const PAGES_CONTENT: Record<string, () => JSX.Element> = {
         <Step n={2} title="Explorez">Les US apparaissent sous forme de cartes : titre, statut Jira/ADO, et score de qualité si déjà analysées. Le filtre texte cherche dans le titre et la description.</Step>
         <Tip>La sync est incrémentale : si une US a changé dans Jira, elle est mise à jour dans TestForge. Les US supprimées dans Jira restent visibles ici (pas de suppression automatique — vos analyses sont préservées).</Tip>
         <Tip type="pro">Sur le plan Pro, filtrez directement au moment de la sync : sprint actif uniquement, statuts spécifiques, labels. Ça évite de charger 500 US quand vous n'en avez besoin que de 12.</Tip>
+        <Tip type="info">Chaque story card affiche un badge de connexion (<strong>🔵 Jira</strong> / <strong>🟣 ADO</strong>) cliquable — cliquer dessus filtre la liste sur ce projet. Le filtre est synchronisé avec l'URL, partageable et persistant au rechargement. Un dropdown "Tous les projets" dans la barre de filtres offre la même fonctionnalité.</Tip>
       </FadeIn>
     </>
   ),
@@ -373,11 +376,29 @@ const PAGES_CONTENT: Record<string, () => JSX.Element> = {
           </div>
         </div>
       </FadeIn>
+      <FadeIn delay={0.18}>
+        <h2 style={h2Style}>Comparer original et version améliorée</h2>
+        <p style={pStyle}>Après une analyse, un toggle au-dessus de la description propose trois modes de lecture :</p>
+        <div style={{ display: "flex", gap: "8px", margin: "10px 0 18px", flexWrap: "wrap" }}>
+          {[
+            { lbl: "US originale", desc: "La description telle qu'elle existe dans Jira / ADO." },
+            { lbl: "✨ Version améliorée", desc: "La réécriture suggérée par le LLM, plus précise et testable." },
+            { lbl: "🔀 Diff", desc: "Vue différentielle mot par mot : ajouts en vert, suppressions en rouge barré. Modes unifié ou côte à côte." },
+          ].map((m, i) => (
+            <div key={i} style={{ padding: "10px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", flex: "1 1 0", minWidth: "150px", background: "#fff" }}>
+              <div style={{ fontWeight: 600, fontSize: "13.5px", marginBottom: "4px" }}>{m.lbl}</div>
+              <div style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.6 }}>{m.desc}</div>
+            </div>
+          ))}
+        </div>
+        <Tip type="info">Le mode Diff est disponible uniquement si une version améliorée existe. En mode "Côte à côte" l'original apparaît à gauche (rouge) et la version améliorée à droite (vert) pour une lecture plus confortable.</Tip>
+      </FadeIn>
       <FadeIn delay={0.2}>
         <h2 style={h2Style}>Analyse en lot</h2>
-        <p style={pStyle}>Pourquoi analyser une US à la fois quand vous pouvez scorer tout le sprint ? Sélectionnez vos US (ou cliquez "Analyser tout le sprint") et obtenez un tableau de bord comparatif en 30 secondes.</p>
+        <p style={pStyle}>Analysez tout un sprint en un clic. Sur la page User Stories, cliquez <strong>"📊 Analyser (N stories)"</strong> — un modal s'ouvre avec une barre de progression en temps réel. Chaque US affiche son score au fur et à mesure.</p>
         <MockupScoreboard />
-        <p style={pStyle}>Le scoreboard trie les US du plus faible score au plus fort. En un coup d'œil, vous savez lesquelles retravailler en refinement.</p>
+        <p style={pStyle}>Une fois le batch terminé, le résumé affiche le score moyen, la distribution vert/jaune/rouge, et les 3 US avec les scores les plus faibles — cliquables pour naviguer directement vers l'US concernée.</p>
+        <Tip>Cochez des US via les checkboxes pour analyser uniquement une sous-sélection. Le bouton indique le nombre exact : <strong>"Analyser (5 stories)"</strong>.</Tip>
         <Tip type="pro">Le writeback vous permet de renvoyer la version améliorée directement dans Jira ou ADO — un clic, et l'US est mise à jour dans la source.</Tip>
       </FadeIn>
     </>
@@ -437,6 +458,16 @@ const PAGES_CONTENT: Record<string, () => JSX.Element> = {
           <li><strong>Couverture</strong> — happy path + au moins 2 cas d'erreur</li>
           <li><strong>Documentation</strong> — JSDoc sur chaque méthode POM</li>
         </ul>
+      </FadeIn>
+      <FadeIn delay={0.22}>
+        <h2 style={h2Style}>Registre POM partagé</h2>
+        <p style={pStyle}>
+          Après chaque génération réussie, TestForge enregistre automatiquement les Page Objects dans le <strong>Registre POM</strong> de l'équipe. Pour les générations suivantes, si un POM de même nom existe déjà pour le même framework et langage, il est importé automatiquement — jamais recréé en double.
+        </p>
+        <p style={pStyle}>
+          Exemple : une première génération crée <code>LoginPage</code>. La génération suivante pour "Réinitialiser le mot de passe" importe <code>LoginPage</code> et ajoute uniquement <code>ResetPasswordPage</code>. Cohérence garantie sur tout le projet.
+        </p>
+        <Tip type="info">Consultez et gérez les POMs enregistrés dans <strong>Paramètres → Registre POM</strong> : nom de classe, fichier, méthodes, US source, date. Suppression manuelle possible.</Tip>
       </FadeIn>
       <FadeIn delay={0.25}><Tip>Si vous avez des tests manuels validés avec des IDs Xray ou ADO, cochez "Lier aux tests manuels" lors de la génération. Le code contiendra les annotations <code style={{ background: "#f3f4f6", padding: "1px 6px", borderRadius: "4px", fontSize: "13px" }}>@XRAY-123</code> pour une traçabilité complète.</Tip></FadeIn>
     </>
@@ -540,6 +571,84 @@ const PAGES_CONTENT: Record<string, () => JSX.Element> = {
           </div>
         </div>
         <p style={pStyle}>Résiliation possible à tout moment depuis Paramètres → Abonnement. Les factures sont disponibles dans l'interface.</p>
+      </FadeIn>
+    </>
+  ),
+  history: () => (
+    <>
+      <h1 style={h1Style}>Historique des <span style={{ color: "#2563eb" }}>générations</span></h1>
+      <p style={leadStyle}>Retrouvez toutes vos générations passées, organisées en arborescence par projet et par user story. Téléchargez, naviguez vers l'US source, ou filtrez par connexion.</p>
+      <FadeIn>
+        <h2 style={h2Style}>Vue arborescente</h2>
+        <p style={pStyle}>L'historique est organisé en 3 niveaux collapsibles :</p>
+        <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "16px 20px", margin: "12px 0 20px", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", lineHeight: 2.2, color: "#374151" }}>
+          <div>🔵 <strong>Backend Jira</strong> <span style={{ color: "#9ca3af" }}>— 12 générations</span></div>
+          <div style={{ paddingLeft: "20px" }}>└ <strong>PROJ-42 : Connexion utilisateur</strong> <span style={{ color: "#9ca3af" }}>— 3 générations</span></div>
+          <div style={{ paddingLeft: "40px", color: "#22c55e" }}>└ gen-abc1234 · Playwright · TypeScript · ✓ Succès</div>
+          <div style={{ paddingLeft: "40px", color: "#22c55e" }}>└ gen-def5678 · Selenium · Java · ✓ Succès</div>
+          <div style={{ paddingLeft: "40px", color: "#ef4444" }}>└ gen-xyz9012 · Cypress · JavaScript · ✗ Erreur</div>
+        </div>
+        <p style={pStyle}>Cliquez sur un en-tête pour le déplier ou replier. Le premier projet est ouvert par défaut.</p>
+      </FadeIn>
+      <FadeIn delay={0.1}>
+        <h2 style={h2Style}>Filtrer par projet</h2>
+        <p style={pStyle}>Sélectionnez une connexion dans le dropdown en haut à droite pour n'afficher que les générations de ce projet. Le filtre est synchronisé avec l'URL — partageable avec votre équipe et persistant au rechargement.</p>
+      </FadeIn>
+      <FadeIn delay={0.15}>
+        <h2 style={h2Style}>Depuis une carte de génération</h2>
+        <ul style={{ color: "#4b5563", lineHeight: 2, paddingLeft: "18px", fontSize: "14.5px" }}>
+          <li><strong>✓ Succès / ✗ Erreur</strong> — statut de la génération</li>
+          <li><strong>Framework · Langage</strong> — ex: Playwright · TypeScript</li>
+          <li><strong>Modèle LLM</strong> utilisé et durée</li>
+          <li><strong>Voir US →</strong> — navigue directement vers la user story source</li>
+          <li><strong>⬇ ZIP</strong> — télécharge les fichiers générés (si succès)</li>
+        </ul>
+      </FadeIn>
+      <FadeIn delay={0.2}>
+        <Tip type="info">Les générations dont la connexion ou l'US a été supprimée apparaissent dans le groupe <strong>Non liées ⚪</strong> en bas de liste — elles ne sont pas perdues.</Tip>
+      </FadeIn>
+    </>
+  ),
+  "analytics-dashboard": () => (
+    <>
+      <h1 style={h1Style}>Analytics & <span style={{ color: "#2563eb" }}>ROI</span></h1>
+      <p style={leadStyle}>Mesurez la qualité de vos user stories et quantifiez le temps gagné par votre équipe QA grâce à TestForge.</p>
+      <FadeIn>
+        <h2 style={h2Style}>Les 4 sections du dashboard</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", margin: "12px 0 24px" }}>
+          {[
+            { ic: "🎯", n: "Score moyen", d: "Badge coloré — vert ≥70, jaune 40-69, rouge <40. Indicateur immédiat de la qualité globale." },
+            { ic: "📊", n: "Distribution des scores", d: "Donut chart avec 3 segments : Bons / Moyens / Faibles. Identifie si le backlog est globalement prêt." },
+            { ic: "📈", n: "Évolution hebdomadaire", d: "Courbe du score moyen sur les 12 dernières semaines. Vérifiez si la qualité progresse sprint après sprint." },
+            { ic: "🗂️", n: "Répartition par projet", d: "Barres horizontales par connexion (Jira / ADO), triées par score décroissant. Identifie les projets les plus faibles." },
+          ].map((p, i) => (
+            <div key={i} style={{ padding: "16px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff" }}>
+              <div style={{ fontSize: "20px", marginBottom: "6px" }}>{p.ic}</div>
+              <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{p.n}</div>
+              <div style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.6 }}>{p.d}</div>
+            </div>
+          ))}
+        </div>
+      </FadeIn>
+      <FadeIn delay={0.1}>
+        <h2 style={h2Style}>KPI "Temps économisé"</h2>
+        <p style={pStyle}>TestForge calcule le temps économisé en multipliant le nombre de tests générés par le temps estimé pour les écrire manuellement. Valeur par défaut : <strong>30 min/test</strong>.</p>
+        <p style={pStyle}>Cliquez sur ⚙️ dans la carte "Temps économisé" pour ajuster cette valeur selon votre contexte (5 à 240 min). La modification s'applique immédiatement à toute l'équipe. <Badge color="blue">Admin requis</Badge></p>
+        <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "16px 20px", margin: "0 0 20px" }}>
+          <div style={{ display: "flex", gap: "28px", flexWrap: "wrap" }}>
+            {[["8 tests générés", "×"], ["30 min/test", "="], ["4h économisées", ""]].map(([v, op], i) => (
+              <div key={i} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "22px", fontWeight: 700, color: "#2563eb" }}>{v}</div>
+                {op && <div style={{ fontSize: "18px", color: "#9ca3af", marginTop: "2px" }}>{op}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </FadeIn>
+      <FadeIn delay={0.15}>
+        <h2 style={h2Style}>Filtrer par projet</h2>
+        <p style={pStyle}>Toutes les sections du dashboard filtrent simultanément quand vous sélectionnez une connexion dans le dropdown. Idéal pour comparer la qualité projet par projet ou pour un sprint review ciblé.</p>
+        <Tip type="info">Le dashboard est accessible depuis <strong>Dashboard</strong> dans le menu principal ou via <code>/analytics</code>.</Tip>
       </FadeIn>
     </>
   ),

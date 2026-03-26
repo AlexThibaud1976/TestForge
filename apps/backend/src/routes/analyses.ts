@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
@@ -5,12 +6,57 @@ import { db } from '../db/index.js';
 import { analyses } from '../db/schema.js';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
 import { AnalysisService } from '../services/analysis/AnalysisService.js';
-import { BatchAnalysisService } from '../services/analysis/BatchAnalysisService.js';
 import type { Request } from 'express';
 
 const router: ReturnType<typeof Router> = Router();
 const analysisService = new AnalysisService();
-const batchAnalysisService = new BatchAnalysisService(analysisService);
+
+// ── Sémaphore de concurrence ──────────────────────────────────────────────────
+
+async function withConcurrencyLimit<T>(
+  tasks: Array<() => Promise<T>>,
+  limit: number,
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = [];
+  const executing: Set<Promise<void>> = new Set();
+
+  for (const task of tasks) {
+    const p: Promise<void> = task().then(
+      (value) => { results.push({ status: 'fulfilled', value }); },
+      (reason: unknown) => { results.push({ status: 'rejected', reason }); },
+    ).then(() => { executing.delete(p); });
+    executing.add(p);
+    if (executing.size >= limit) await Promise.race(executing);
+  }
+  await Promise.all(executing);
+  return results;
+}
+
+// ── Routes ────────────────────────────────────────────────────────────────────
+
+// POST /api/analyses/batch  { userStoryIds } — DOIT être AVANT /:id
+// Retourne 202 immédiatement, traitement en background (max 3 LLM en parallèle)
+router.post('/batch', requireAuth, async (req: Request, res) => {
+  const { teamId } = req as AuthenticatedRequest;
+  const parsed = z.object({
+    userStoryIds: z.array(z.string().uuid()).min(1).max(50),
+  }).safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const batchId = randomUUID();
+  const { userStoryIds } = parsed.data;
+
+  // Réponse immédiate — 202 Accepted
+  res.status(202).json({ batchId, total: userStoryIds.length });
+
+  // Traitement background — max 3 LLM calls simultanés
+  const tasks = userStoryIds.map((id) => () => analysisService.analyze(id, teamId));
+  void withConcurrencyLimit(tasks, 3);
+});
 
 // POST /api/analyses  { userStoryId }
 router.post('/', requireAuth, async (req: Request, res) => {
@@ -69,27 +115,6 @@ router.get('/', requireAuth, async (req: Request, res) => {
   });
 
   res.json(analysis ?? null);
-});
-
-// POST /api/analyses/batch  { userStoryIds: string[] }
-router.post('/batch', requireAuth, async (req: Request, res) => {
-  const { teamId } = req as AuthenticatedRequest;
-  const parsed = z.object({
-    userStoryIds: z.array(z.string().uuid()).min(1).max(50),
-  }).safeParse(req.body);
-
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
-
-  try {
-    const result = await batchAnalysisService.analyzeBatch(parsed.data.userStoryIds, teamId);
-    res.status(201).json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Batch analysis failed';
-    res.status(500).json({ error: message });
-  }
 });
 
 export default router;
