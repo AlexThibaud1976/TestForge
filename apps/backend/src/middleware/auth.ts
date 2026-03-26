@@ -15,6 +15,24 @@ export interface AuthenticatedRequest extends Request {
   role: 'admin' | 'member';
 }
 
+// Cache court (60s) pour éviter 2 appels réseau Supabase par requête
+interface AuthCacheEntry {
+  userId: string;
+  teamId: string;
+  role: 'admin' | 'member';
+  expiresAt: number;
+}
+const AUTH_CACHE_TTL_MS = 60_000;
+const authCache = new Map<string, AuthCacheEntry>();
+
+// Nettoyage périodique des entrées expirées
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of authCache) {
+    if (now >= entry.expiresAt) authCache.delete(key);
+  }
+}, 120_000);
+
 export async function requireAuth(
   req: Request,
   res: Response,
@@ -27,6 +45,17 @@ export async function requireAuth(
   }
 
   const token = authHeader.slice(7);
+
+  // Servir depuis le cache si disponible
+  const cached = authCache.get(token);
+  if (cached && Date.now() < cached.expiresAt) {
+    (req as AuthenticatedRequest).userId = cached.userId;
+    (req as AuthenticatedRequest).teamId = cached.teamId;
+    (req as AuthenticatedRequest).role = cached.role;
+    next();
+    return;
+  }
+
   const { data, error } = await supabase.auth.getUser(token);
 
   if (error || !data.user) {
@@ -63,9 +92,15 @@ export async function requireAuth(
     // Colonne suspended_at non encore migrée — on continue sans le check
   }
 
-  (req as AuthenticatedRequest).userId = data.user.id;
-  (req as AuthenticatedRequest).teamId = member.team_id as string;
-  (req as AuthenticatedRequest).role = member.role as 'admin' | 'member';
+  const userId = data.user.id;
+  const teamId = member.team_id as string;
+  const role = member.role as 'admin' | 'member';
+
+  authCache.set(token, { userId, teamId, role, expiresAt: Date.now() + AUTH_CACHE_TTL_MS });
+
+  (req as AuthenticatedRequest).userId = userId;
+  (req as AuthenticatedRequest).teamId = teamId;
+  (req as AuthenticatedRequest).role = role;
 
   next();
 }
