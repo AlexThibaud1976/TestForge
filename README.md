@@ -108,7 +108,7 @@ Complete "Manual Test First" pipeline:
 | Embeddings | OpenAI `text-embedding-3-small` (duplicate detection) |
 | Credentials | AES-256-GCM encryption |
 | Payments | Stripe Checkout + Webhooks |
-| Tests | Vitest (201 unit tests, 94%+ service coverage) |
+| Tests | Vitest (229 unit tests, 85%+ line coverage) |
 | Deploy | Railway (backend) + Vercel (frontend) |
 | CI/CD | GitHub Actions |
 | Monorepo | pnpm workspaces |
