@@ -21,8 +21,8 @@ router.post('/', requireAuth, async (req: Request, res) => {
   const parsed = z.object({
     analysisId: z.string().uuid(),
     useImprovedVersion: z.boolean().default(false),
-    framework: z.enum(['playwright', 'selenium']).default('playwright'),
-    language: z.enum(['typescript', 'javascript', 'python', 'java', 'csharp']).default('typescript'),
+    framework: z.enum(['playwright', 'selenium', 'cypress']).default('playwright'),
+    language: z.enum(['typescript', 'javascript', 'python', 'java', 'csharp', 'ruby', 'kotlin']).default('typescript'),
     manualTestSetId: z.string().uuid().optional(),
     // Feature 008
     incremental: z.boolean().default(false),

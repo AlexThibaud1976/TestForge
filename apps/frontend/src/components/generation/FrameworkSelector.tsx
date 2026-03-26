@@ -1,5 +1,5 @@
-type Framework = 'playwright' | 'selenium';
-type Language = 'typescript' | 'javascript' | 'python' | 'java' | 'csharp';
+type Framework = 'playwright' | 'selenium' | 'cypress';
+type Language = 'typescript' | 'javascript' | 'python' | 'java' | 'csharp' | 'ruby' | 'kotlin';
 
 interface FrameworkSelectorProps {
   framework: Framework;
@@ -8,8 +8,9 @@ interface FrameworkSelectorProps {
 }
 
 const FRAMEWORKS: { id: Framework; label: string; logo: string }[] = [
-  { id: 'playwright', label: 'Playwright', logo: '🎭' },
+  { id: 'playwright', label: 'Playwright',  logo: '🎭' },
   { id: 'selenium',   label: 'Selenium v4', logo: '⚙️' },
+  { id: 'cypress',    label: 'Cypress',     logo: '🌲' },
 ];
 
 const LANGUAGES_BY_FRAMEWORK: Record<Framework, { id: Language; label: string }[]> = {
@@ -18,10 +19,18 @@ const LANGUAGES_BY_FRAMEWORK: Record<Framework, { id: Language; label: string }[
     { id: 'javascript', label: 'JavaScript' },
     { id: 'python',     label: 'Python' },
     { id: 'java',       label: 'Java' },
+    { id: 'csharp',     label: 'C#' },
   ],
   selenium: [
     { id: 'java',       label: 'Java' },
     { id: 'python',     label: 'Python' },
+    { id: 'csharp',     label: 'C# (NUnit)' },
+    { id: 'ruby',       label: 'Ruby (RSpec)' },
+    { id: 'kotlin',     label: 'Kotlin (JUnit 5)' },
+  ],
+  cypress: [
+    { id: 'javascript', label: 'JavaScript' },
+    { id: 'typescript', label: 'TypeScript' },
   ],
 };
 

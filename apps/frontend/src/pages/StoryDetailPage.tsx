@@ -65,8 +65,8 @@ export function StoryDetailPage() {
   const [generationState, setGenerationState] = useState<GenerationState>('idle');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [pendingGenerationId, setPendingGenerationId] = useState<string | null>(null);
-  const [framework, setFramework] = useState<'playwright' | 'selenium'>('playwright');
-  const [language, setLanguage] = useState<'typescript' | 'javascript' | 'python' | 'java' | 'csharp'>('typescript');
+  const [framework, setFramework] = useState<'playwright' | 'selenium' | 'cypress'>('playwright');
+  const [language, setLanguage] = useState<'typescript' | 'javascript' | 'python' | 'java' | 'csharp' | 'ruby' | 'kotlin'>('typescript');
   const [linkManualTests, setLinkManualTests] = useState(true);
 
   const [activeTab, setActiveTab] = useState<Tab>('analysis');

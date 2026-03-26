@@ -118,8 +118,8 @@ export interface Generation {
   id: string;
   analysisId: string;
   teamId: string;
-  framework: 'playwright';
-  language: 'typescript';
+  framework: 'playwright' | 'selenium' | 'cypress';
+  language: 'typescript' | 'javascript' | 'python' | 'java' | 'csharp' | 'ruby' | 'kotlin';
   usedImprovedVersion: boolean;
   llmProvider: string;
   llmModel: string;
