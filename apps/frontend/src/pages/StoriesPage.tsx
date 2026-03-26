@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { useConnectionFilter, type Connection } from '../hooks/useConnectionFilter.js';
+import { ConnectionBadge } from '../components/ConnectionBadge.js';
 import { SprintScoreboard, type AnalysisResultItem, type BatchStats } from '../components/SprintScoreboard.js';
 import { DuplicatesPanel, type DuplicatePair } from '../components/DuplicatesPanel.js';
 import { SyncDialog, type SyncFilters } from '../components/SyncDialog.js';
@@ -14,12 +16,6 @@ interface UserStory {
   labels: string[];
   connectionId: string;
   fetchedAt: string;
-}
-
-interface Connection {
-  id: string;
-  name: string;
-  type: string;
 }
 
 interface PaginatedResponse {
@@ -38,13 +34,13 @@ const PAGE_SIZE = 20;
 
 export function StoriesPage() {
   const navigate = useNavigate();
+  const { connections, connectionId, setConnectionId, loading: connectionsLoading } = useConnectionFilter();
+
   const [stories, setStories] = useState<UserStory[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [connectionFilter, setConnectionFilter] = useState('');
-  const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
 
@@ -69,28 +65,27 @@ export function StoriesPage() {
       pageSize: String(PAGE_SIZE),
       ...(search && { search }),
       ...(statusFilter && { status: statusFilter }),
-      ...(connectionFilter && { connectionId: connectionFilter }),
+      ...(connectionId && { connectionId }),
     });
     const data = await api.get<PaginatedResponse>(`/api/user-stories?${params.toString()}`);
     setStories(data.data);
     setTotal(data.total);
     setLoading(false);
-  }, [page, search, statusFilter, connectionFilter]);
+  }, [page, search, statusFilter, connectionId]);
 
   useEffect(() => {
-    api.get<Connection[]>('/api/connections').then(setConnections).catch(() => {});
     api.get<DuplicatePair[]>('/api/duplicates').then(setDuplicates).catch(() => null);
   }, []);
 
   useEffect(() => { void fetchStories(); }, [fetchStories]);
 
-  const handleSync = async (connectionId: string, filters?: SyncFilters) => {
+  const handleSync = async (connId: string, filters?: SyncFilters) => {
     setSyncDialog(null);
-    setSyncing(connectionId);
+    setSyncing(connId);
     try {
       const body = filters && Object.keys(filters).length > 0
-        ? { connectionId, filters }
-        : { connectionId };
+        ? { connectionId: connId, filters }
+        : { connectionId: connId };
       const result = await api.post<{ synced: number }>('/api/user-stories/sync', body);
       alert(`${result.synced} user stories synchronisées`);
       void fetchStories();
@@ -137,7 +132,6 @@ export function StoriesPage() {
   // Feature 009: filtres locaux sur les US déjà chargées
   const filteredStories = stories.filter((s) => {
     if (localSprintFilter && !s.labels.some((l) => l.toLowerCase().includes(localSprintFilter.toLowerCase()))) {
-      // Filtrage approximatif par label (le sprint n'est pas stocké directement)
       if (!s.title.toLowerCase().includes(localSprintFilter.toLowerCase()) &&
           !s.description?.toLowerCase().includes(localSprintFilter.toLowerCase())) return false;
     }
@@ -146,6 +140,12 @@ export function StoriesPage() {
     }
     return true;
   });
+
+  const batchLabel = selected.size > 0
+    ? `la sélection (${selected.size})`
+    : connectionId
+      ? `connexion (${total} stories)`
+      : 'tout le sprint';
 
   return (
     <div className="p-6">
@@ -194,7 +194,7 @@ export function StoriesPage() {
             >
               {batchRunning ? (
                 <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" /> {batchProgress ? `${batchProgress.done}/${batchProgress.total}` : '...'}</>
-              ) : `📊 Analyser ${selected.size > 0 ? `la sélection (${selected.size})` : 'tout le sprint'}`}
+              ) : `📊 Analyser ${batchLabel}`}
             </button>
           )}
           {connections.map((conn) => (
@@ -232,10 +232,10 @@ export function StoriesPage() {
       )}
 
       {/* Filtres */}
-      <div className="flex gap-3 mb-3">
+      <div className="flex gap-3 mb-3 flex-wrap">
         <input type="text" placeholder="🔍 Rechercher..." value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="flex-1 min-w-40 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">Tous statuts</option>
@@ -248,11 +248,19 @@ export function StoriesPage() {
         <input type="text" placeholder="Label..." value={localLabelFilter}
           onChange={(e) => setLocalLabelFilter(e.target.value)}
           className="w-28 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        {connections.length > 1 && (
-          <select value={connectionFilter} onChange={(e) => { setConnectionFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Toutes connexions</option>
-            {connections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        {/* Feature 014: filtre par connexion avec icônes */}
+        {!connectionsLoading && connections.length > 0 && (
+          <select
+            value={connectionId ?? ''}
+            onChange={(e) => { setConnectionId(e.target.value || null); setPage(1); }}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Tous les projets</option>
+            {connections.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.type === 'jira' ? '🔵' : '🟣'} {c.name}
+              </option>
+            ))}
           </select>
         )}
       </div>
@@ -290,10 +298,15 @@ export function StoriesPage() {
       ) : (
         <div className="space-y-2">
           {filteredStories.map((story) => (
-            <UserStoryCard key={story.id} story={story}
+            <UserStoryCard
+              key={story.id}
+              story={story}
+              connection={connections.find((c) => c.id === story.connectionId)}
               selected={selected.has(story.id)}
               onSelect={() => toggleSelect(story.id)}
-              onClick={() => void navigate(`/stories/${story.id}`)} />
+              onClick={() => void navigate(`/stories/${story.id}`)}
+              onConnectionClick={(id) => { setConnectionId(id); setPage(1); }}
+            />
           ))}
         </div>
       )}
@@ -312,8 +325,13 @@ export function StoriesPage() {
   );
 }
 
-function UserStoryCard({ story, selected, onSelect, onClick }: {
-  story: UserStory; selected: boolean; onSelect: () => void; onClick: () => void;
+function UserStoryCard({ story, connection, selected, onSelect, onClick, onConnectionClick }: {
+  story: UserStory;
+  connection: Connection | undefined;
+  selected: boolean;
+  onSelect: () => void;
+  onClick: () => void;
+  onConnectionClick?: (connectionId: string) => void;
 }) {
   return (
     <div className={`bg-white border rounded-lg p-4 flex items-start gap-3 hover:shadow-sm transition-all ${selected ? 'border-indigo-300 ring-1 ring-indigo-200' : 'border-gray-200'}`}>
@@ -321,21 +339,29 @@ function UserStoryCard({ story, selected, onSelect, onClick }: {
         onChange={(e) => { e.stopPropagation(); onSelect(); }}
         onClick={(e) => e.stopPropagation()}
         className="mt-0.5 rounded text-indigo-600 shrink-0" />
-      <button onClick={onClick} className="flex-1 text-left group min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-mono text-gray-400">{story.externalId}</span>
-          <StatusBadge status={story.status} />
-        </div>
-        <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">{story.title}</p>
-        {story.description && <p className="text-xs text-gray-400 mt-1 truncate">{story.description}</p>}
-        {story.labels.length > 0 && (
-          <div className="flex gap-1 mt-2 flex-wrap">
+      <div className="flex-1 min-w-0">
+        <button onClick={onClick} className="w-full text-left group">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono text-gray-400">{story.externalId}</span>
+            <StatusBadge status={story.status} />
+          </div>
+          <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">{story.title}</p>
+          {story.description && <p className="text-xs text-gray-400 mt-1 truncate">{story.description}</p>}
+        </button>
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex gap-1 flex-wrap">
             {story.labels.slice(0, 4).map((label) => (
               <span key={label} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{label}</span>
             ))}
           </div>
-        )}
-      </button>
+          <ConnectionBadge
+            name={connection?.name ?? null}
+            type={connection?.type ?? null}
+            connectionId={story.connectionId}
+            onClick={onConnectionClick}
+          />
+        </div>
+      </div>
       <span className="text-gray-300 text-sm shrink-0">→</span>
     </div>
   );
