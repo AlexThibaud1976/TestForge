@@ -17,6 +17,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage.js';
 import { PomRegistryPage } from './pages/PomRegistryPage.js';
 import { PomTemplatesPage } from './pages/PomTemplatesPage.js';
 import { SuperAdminPage } from './pages/SuperAdminPage.js';
+import { UserGuideDocs } from './pages/UserGuideDocs.js';
 
 function ProtectedRoutes() {
   return (
@@ -59,6 +60,7 @@ export default function App() {
       <Route path="/login" element={session ? <Navigate to="/stories" replace /> : <LoginPage />} />
       <Route path="/register" element={session ? <Navigate to="/stories" replace /> : <RegisterPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
+      <Route path="/docs" element={<UserGuideDocs />} />
       {/* Routes protégées — redirige vers la landing si pas connecté */}
       <Route path="*" element={session ? <ProtectedRoutes /> : <Navigate to="/" replace />} />
     </Routes>

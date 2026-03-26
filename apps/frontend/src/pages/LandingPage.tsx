@@ -56,6 +56,12 @@ export function LandingPage() {
           <span className="text-xl font-bold tracking-tight text-blue-600">🔧 TestForge</span>
           <div className="flex items-center gap-3">
             <Link
+              to="/docs"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-2"
+            >
+              Documentation
+            </Link>
+            <Link
               to="/login"
               className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-2"
             >
@@ -345,6 +351,7 @@ export class LoginPage {
           <span className="text-sm font-semibold text-gray-300">🔧 TestForge</span>
           <p className="text-xs">© 2026 TestForge · Montpellier, France · Données hébergées en Europe</p>
           <div className="flex gap-4 text-xs">
+            <Link to="/docs" className="hover:text-white transition-colors">Documentation</Link>
             <Link to="/login" className="hover:text-white transition-colors">Connexion</Link>
             <Link to="/register" className="hover:text-white transition-colors">Inscription</Link>
           </div>
