@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { GenerationHistoryItem } from '../../hooks/useHistoryData.js';
+import { Button } from '@/components/ui/button.js';
+import { Badge } from '@/components/ui/badge.js';
 
 interface GenerationCardProps {
   generation: GenerationHistoryItem;
@@ -18,18 +20,14 @@ export function GenerationCard({ generation: gen, onDownload }: GenerationCardPr
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${
-                gen.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}
-            >
-              {gen.status === 'success' ? '✓ Succès' : '✗ Erreur'}
-            </span>
+            {gen.status === 'success' ? (
+              <Badge variant="success">✓ Succès</Badge>
+            ) : (
+              <Badge variant="destructive">✗ Erreur</Badge>
+            )}
             <span className="text-xs text-gray-400 font-mono">{gen.id.slice(0, 8)}</span>
             {gen.usedImprovedVersion && (
-              <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">
-                ✨ version améliorée
-              </span>
+              <Badge variant="secondary">✨ version améliorée</Badge>
             )}
           </div>
           <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
@@ -43,25 +41,22 @@ export function GenerationCard({ generation: gen, onDownload }: GenerationCardPr
         </div>
         <div className="flex gap-2 shrink-0">
           {/* FIX BUG #2: navigue vers /stories/:userStoryId et non /stories */}
-          <button
+          <Button
+            variant="outline"
+            size="xs"
             onClick={() => gen.userStoryId && navigate(`/stories/${gen.userStoryId}`)}
             disabled={!gen.userStoryId}
             title={gen.userStoryId ? undefined : 'US non disponible'}
-            className={`text-xs px-2 py-1 border rounded ${
-              gen.userStoryId
-                ? 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                : 'border-gray-100 text-gray-300 opacity-40 cursor-not-allowed'
-            }`}
           >
             Voir US
-          </button>
+          </Button>
           {gen.status === 'success' && (
-            <button
+            <Button
+              size="xs"
               onClick={() => onDownload(gen.id)}
-              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
               ⬇ ZIP
-            </button>
+            </Button>
           )}
         </div>
       </div>

@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 import { useBatchAnalysis } from '../../hooks/useBatchAnalysis.js';
 import { BatchSummary } from './BatchSummary.js';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import { Progress } from '@/components/ui/progress.js';
+import { Button } from '@/components/ui/button.js';
 
 interface Story {
   id: string;
@@ -25,35 +28,31 @@ export function BatchAnalysisModal({ stories, onClose }: BatchAnalysisModalProps
   const pct = state.total > 0 ? Math.round((state.completed / state.total) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-xl">
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="w-full max-w-lg max-h-[80vh] flex flex-col p-0 gap-0">
 
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <DialogHeader className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-semibold text-gray-900">
+            <DialogTitle className="text-base font-semibold text-gray-900">
               Analyse du sprint
-            </h2>
+            </DialogTitle>
             {state.done && (
               <span className="text-xs text-green-600 font-medium">✓ Terminé</span>
             )}
           </div>
           {/* Barre de progression */}
           <div className="flex items-center gap-2">
-            <div
+            <Progress
               data-testid="progress-bar"
-              className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden"
-            >
-              <div
-                className="h-full bg-indigo-500 rounded-full transition-all duration-300"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+              value={pct}
+              className="flex-1"
+            />
             <span className="text-xs text-gray-500 shrink-0">
               {state.completed}/{state.total}
             </span>
           </div>
-        </div>
+        </DialogHeader>
 
         {/* Liste des stories avec statut */}
         <div className="flex-1 overflow-y-auto p-2">
@@ -96,15 +95,17 @@ export function BatchAnalysisModal({ stories, onClose }: BatchAnalysisModalProps
         {/* Bouton fermer quand en cours */}
         {!state.done && (
           <div className="p-3 border-t border-gray-100">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="w-full text-sm text-gray-400 hover:text-gray-600 py-1"
+              className="w-full text-gray-400 hover:text-gray-600"
             >
               Fermer (continue en arrière-plan)
-            </button>
+            </Button>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

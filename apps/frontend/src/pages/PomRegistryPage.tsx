@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { Button } from '@/components/ui/button.js';
+import { Badge } from '@/components/ui/badge.js';
+import { Card, CardContent } from '@/components/ui/card.js';
 
 interface PomMethod {
   name: string;
@@ -57,60 +60,66 @@ export function PomRegistryPage() {
       ) : (
         <div className="space-y-3">
           {poms.map((pom) => (
-            <div key={pom.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <button
-                    onClick={() => setExpanded(expanded === pom.id ? null : pom.id)}
-                    className="flex items-center gap-2 text-left min-w-0"
-                  >
-                    <span className="text-sm font-semibold text-gray-900 font-mono">{pom.className}</span>
-                    <span className="text-xs text-gray-400 truncate">{pom.filename}</span>
-                    <span className="text-xs text-gray-300">{expanded === pom.id ? '▲' : '▼'}</span>
-                  </button>
+            <Card key={pom.id}>
+              <CardContent className="p-0">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpanded(expanded === pom.id ? null : pom.id)}
+                      className="flex items-center gap-2 text-left min-w-0 h-auto p-0 hover:bg-transparent"
+                    >
+                      <span className="text-sm font-semibold text-gray-900 font-mono">{pom.className}</span>
+                      <span className="text-xs text-gray-400 truncate">{pom.filename}</span>
+                      <span className="text-xs text-gray-300">{expanded === pom.id ? '▲' : '▼'}</span>
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-gray-400">{pom.methods.length} méthode{pom.methods.length > 1 ? 's' : ''}</span>
+                    <Badge variant="secondary" className="text-xs font-mono">
+                      {pom.framework}/{pom.language}
+                    </Badge>
+                    <span className="text-xs text-gray-300">
+                      {new Date(pom.updatedAt).toLocaleDateString('fr-FR')}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => void handleDelete(pom.id, pom.className)}
+                      className="text-xs text-red-400 hover:text-red-600 border-red-100 hover:bg-red-50"
+                    >
+                      Supprimer
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-gray-400">{pom.methods.length} méthode{pom.methods.length > 1 ? 's' : ''}</span>
-                  <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-mono">
-                    {pom.framework}/{pom.language}
-                  </span>
-                  <span className="text-xs text-gray-300">
-                    {new Date(pom.updatedAt).toLocaleDateString('fr-FR')}
-                  </span>
-                  <button
-                    onClick={() => void handleDelete(pom.id, pom.className)}
-                    className="text-xs text-red-400 hover:text-red-600 border border-red-100 rounded px-2 py-0.5 hover:bg-red-50"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              </div>
 
-              {expanded === pom.id && (
-                <div className="border-t border-gray-100 px-4 py-3">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-gray-400">
-                        <th className="text-left pb-2 font-medium">Méthode</th>
-                        <th className="text-left pb-2 font-medium">Params</th>
-                        <th className="text-left pb-2 font-medium">Retour</th>
-                        <th className="text-left pb-2 font-medium">Description</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {pom.methods.map((method, i) => (
-                        <tr key={i}>
-                          <td className="py-1.5 font-mono text-indigo-600">{method.name}</td>
-                          <td className="py-1.5 text-gray-500 font-mono">{method.params || '—'}</td>
-                          <td className="py-1.5 text-gray-400 font-mono">{method.returnType}</td>
-                          <td className="py-1.5 text-gray-500 italic">{method.jsdoc || '—'}</td>
+                {expanded === pom.id && (
+                  <div className="border-t border-gray-100 px-4 py-3">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-400">
+                          <th className="text-left pb-2 font-medium">Méthode</th>
+                          <th className="text-left pb-2 font-medium">Params</th>
+                          <th className="text-left pb-2 font-medium">Retour</th>
+                          <th className="text-left pb-2 font-medium">Description</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {pom.methods.map((method, i) => (
+                          <tr key={i}>
+                            <td className="py-1.5 font-mono text-indigo-600">{method.name}</td>
+                            <td className="py-1.5 text-gray-500 font-mono">{method.params || '—'}</td>
+                            <td className="py-1.5 text-gray-400 font-mono">{method.returnType}</td>
+                            <td className="py-1.5 text-gray-500 italic">{method.jsdoc || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

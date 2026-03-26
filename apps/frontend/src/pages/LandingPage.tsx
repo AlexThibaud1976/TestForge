@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Logo } from '../components/ui/Logo.js';
 import { ProviderLogo } from '../components/ui/ProviderLogo.js';
+import { Button } from '@/components/ui/button.js';
+import { Card, CardContent } from '@/components/ui/card.js';
+import { Badge } from '@/components/ui/badge.js';
 
 const SCORE_DIMENSIONS = [
   { label: 'Clarté', pct: 85, color: 'bg-blue-500' },
@@ -126,12 +129,16 @@ export function LandingPage() {
             <strong className="text-gray-700">2 heures → 15 minutes.</strong>
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/register" className="px-8 py-3.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200/50 text-sm">
-              Démarrer l'essai gratuit — 14 jours
-            </Link>
-            <a href="#pipeline" className="px-6 py-3.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-              Comment ça marche ↓
-            </a>
+            <Button size="lg" asChild>
+              <Link to="/register">
+                Démarrer l'essai gratuit — 14 jours
+              </Link>
+            </Button>
+            <Button variant="outline" size="lg" asChild>
+              <a href="#pipeline">
+                Comment ça marche ↓
+              </a>
+            </Button>
           </div>
           <p className="mt-5 text-xs text-gray-400">Sans carte bancaire · Données hébergées en Europe</p>
         </div>
@@ -150,14 +157,16 @@ export function LandingPage() {
             { icon: '📋', step: '3', title: 'Tests manuels', desc: 'Cas de test structurés prêts pour Xray ou ADO Test Plans.', highlight: false },
             { icon: '⚡', step: '4', title: 'Automatisez', desc: 'Playwright, Selenium ou Cypress avec POM, fixtures, données externalisées.', highlight: false },
           ].map((s) => (
-            <div key={s.step} className={`relative rounded-2xl p-6 border transition-all ${s.highlight ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-200/30' : 'bg-white border-gray-200/80 hover:border-blue-200 hover:shadow-md'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-2xl">{s.icon}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.highlight ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>ÉTAPE {s.step}</span>
-              </div>
-              <h3 className={`text-base font-bold mb-1.5 ${s.highlight ? 'text-white' : ''}`}>{s.title}</h3>
-              <p className={`text-sm leading-relaxed ${s.highlight ? 'text-blue-100' : 'text-gray-500'}`}>{s.desc}</p>
-            </div>
+            <Card key={s.step} className={`relative transition-all ${s.highlight ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-200/30' : 'hover:border-blue-200 hover:shadow-md'}`}>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">{s.icon}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.highlight ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>ÉTAPE {s.step}</span>
+                </div>
+                <h3 className={`text-base font-bold mb-1.5 ${s.highlight ? 'text-white' : ''}`}>{s.title}</h3>
+                <p className={`text-sm leading-relaxed ${s.highlight ? 'text-blue-100' : 'text-gray-500'}`}>{s.desc}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
@@ -244,34 +253,36 @@ export function LandingPage() {
           La même logique, deux niveaux de couverture.
         </p>
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white border border-gray-200 rounded-2xl p-7 space-y-4">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl">📋</span>
-              <div>
-                <h3 className="font-bold text-base">Cas de test manuels</h3>
-                <p className="text-xs text-gray-400">Traçabilité US ↔ Test</p>
+          <Card>
+            <CardContent className="p-7 space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">📋</span>
+                <div>
+                  <h3 className="font-bold text-base">Cas de test manuels</h3>
+                  <p className="text-xs text-gray-400">Traçabilité US ↔ Test</p>
+                </div>
               </div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-4 space-y-3 text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-              <div className="text-gray-500 font-bold">TC-001 — Happy path</div>
-              <div className="space-y-1 text-gray-600">
-                <div><span className="text-blue-500">1.</span> Ouvrir /login</div>
-                <div><span className="text-blue-500">2.</span> Saisir email + mot de passe valides</div>
-                <div><span className="text-blue-500">3.</span> Cliquer "Se connecter"</div>
-                <div className="text-green-600">→ Redirection vers /dashboard</div>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3 text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                <div className="text-gray-500 font-bold">TC-001 — Happy path</div>
+                <div className="space-y-1 text-gray-600">
+                  <div><span className="text-blue-500">1.</span> Ouvrir /login</div>
+                  <div><span className="text-blue-500">2.</span> Saisir email + mot de passe valides</div>
+                  <div><span className="text-blue-500">3.</span> Cliquer "Se connecter"</div>
+                  <div className="text-green-600">→ Redirection vers /dashboard</div>
+                </div>
+                <div className="text-gray-500 font-bold pt-1">TC-002 — Email invalide</div>
+                <div className="space-y-1 text-gray-600">
+                  <div><span className="text-blue-500">1.</span> Saisir un email mal formaté</div>
+                  <div className="text-red-500">→ Message d'erreur "Email invalide"</div>
+                </div>
               </div>
-              <div className="text-gray-500 font-bold pt-1">TC-002 — Email invalide</div>
-              <div className="space-y-1 text-gray-600">
-                <div><span className="text-blue-500">1.</span> Saisir un email mal formaté</div>
-                <div className="text-red-500">→ Message d'erreur "Email invalide"</div>
+              <div className="flex gap-2 flex-wrap">
+                <span className="text-xs bg-purple-50 text-purple-600 border border-purple-100 px-2.5 py-1 rounded-full font-medium">Xray (Jira)</span>
+                <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-1 rounded-full font-medium">ADO Test Plans</span>
+                <span className="text-xs bg-gray-50 text-gray-500 border border-gray-200 px-2.5 py-1 rounded-full font-medium">Export CSV</span>
               </div>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-xs bg-purple-50 text-purple-600 border border-purple-100 px-2.5 py-1 rounded-full font-medium">Xray (Jira)</span>
-              <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-1 rounded-full font-medium">ADO Test Plans</span>
-              <span className="text-xs bg-gray-50 text-gray-500 border border-gray-200 px-2.5 py-1 rounded-full font-medium">Export CSV</span>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           <div className="bg-gray-900 rounded-2xl overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-3 bg-gray-800 border-b border-gray-700">
@@ -325,14 +336,16 @@ test.describe('US-42 — Authentification', () => {
           <p className="text-center text-gray-500 mb-14">QA, PO et Tech Leads — chacun y trouve son compte.</p>
           <div className="grid md:grid-cols-3 gap-6">
             {PERSONAS.map((p) => (
-              <div key={p.name} className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
-                <span className="text-4xl block mb-4">{p.emoji}</span>
-                <h3 className="font-bold text-sm mb-3">{p.name}</h3>
-                <div className="space-y-2 text-sm">
-                  <p className="text-red-500/80"><span className="font-medium">Avant :</span> {p.pain}</p>
-                  <p className="text-green-600"><span className="font-medium">Après :</span> {p.gain}</p>
-                </div>
-              </div>
+              <Card key={p.name} className="bg-gray-50 border-gray-100">
+                <CardContent className="p-6">
+                  <span className="text-4xl block mb-4">{p.emoji}</span>
+                  <h3 className="font-bold text-sm mb-3">{p.name}</h3>
+                  <div className="space-y-2 text-sm">
+                    <p className="text-red-500/80"><span className="font-medium">Avant :</span> {p.pain}</p>
+                    <p className="text-green-600"><span className="font-medium">Après :</span> {p.gain}</p>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -346,19 +359,21 @@ test.describe('US-42 — Authentification', () => {
         </p>
         <div className="grid sm:grid-cols-3 gap-5">
           {FRAMEWORKS.map((fw) => (
-            <div key={fw.group} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <ProviderLogo provider={fw.group} size={20} />
-                <h3 className="font-bold text-sm text-gray-900">{fw.label}</h3>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {fw.items.map((lang) => (
-                  <span key={lang} className="text-xs bg-gray-50 border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full">
-                    {lang}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <Card key={fw.group}>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <ProviderLogo provider={fw.group} size={20} />
+                  <h3 className="font-bold text-sm text-gray-900">{fw.label}</h3>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {fw.items.map((lang) => (
+                    <span key={lang} className="text-xs bg-gray-50 border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full">
+                      {lang}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
@@ -394,16 +409,18 @@ test.describe('US-42 — Authentification', () => {
         </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {INTEGRATIONS.map((item) => (
-            <div key={item.title} className="bg-white border border-gray-200 rounded-2xl p-6 hover:border-blue-200 hover:shadow-md transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <span className="text-2xl">{item.icon}</span>
-                <span className={`text-xs font-medium border px-2 py-0.5 rounded-full ${item.badgeColor}`}>
-                  {item.badge}
-                </span>
-              </div>
-              <h3 className="font-bold text-sm mb-1.5">{item.title}</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
-            </div>
+            <Card key={item.title} className="hover:border-blue-200 hover:shadow-md transition-all">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-2xl">{item.icon}</span>
+                  <Badge className={`text-xs font-medium border ${item.badgeColor}`}>
+                    {item.badge}
+                  </Badge>
+                </div>
+                <h3 className="font-bold text-sm mb-1.5">{item.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
@@ -414,27 +431,31 @@ test.describe('US-42 — Authentification', () => {
           <h2 className="text-3xl font-bold text-center mb-3 tracking-tight">Tarifs simples</h2>
           <p className="text-center text-gray-500 mb-12">Par équipe, par mois. Commencez gratuitement.</p>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-gray-50 rounded-2xl p-7 border border-gray-100">
-              <h3 className="font-bold text-sm text-gray-500 mb-1">Trial</h3>
-              <div className="text-3xl font-bold mb-1">0€</div>
-              <p className="text-xs text-gray-400 mb-5">14 jours · sans CB</p>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Toutes les fonctionnalités</li>
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Tous les providers LLM</li>
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Membres illimités</li>
-              </ul>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-7 border border-gray-100">
-              <h3 className="font-bold text-sm text-gray-500 mb-1">Starter</h3>
-              <div className="text-3xl font-bold mb-1">49€<span className="text-base font-normal text-gray-400">/mois</span></div>
-              <p className="text-xs text-gray-400 mb-5">Jusqu'à 5 membres</p>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>OpenAI · Claude · Mistral</li>
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Jira + Azure DevOps</li>
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Templates POM personnalisés</li>
-                <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Historique 30 jours</li>
-              </ul>
-            </div>
+            <Card className="bg-gray-50 border-gray-100">
+              <CardContent className="p-7">
+                <h3 className="font-bold text-sm text-gray-500 mb-1">Trial</h3>
+                <div className="text-3xl font-bold mb-1">0€</div>
+                <p className="text-xs text-gray-400 mb-5">14 jours · sans CB</p>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Toutes les fonctionnalités</li>
+                  <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Tous les providers LLM</li>
+                  <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Membres illimités</li>
+                </ul>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-50 border-gray-100">
+              <CardContent className="p-7">
+                <h3 className="font-bold text-sm text-gray-500 mb-1">Starter</h3>
+                <div className="text-3xl font-bold mb-1">49€<span className="text-base font-normal text-gray-400">/mois</span></div>
+                <p className="text-xs text-gray-400 mb-5">Jusqu'à 5 membres</p>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>OpenAI · Claude · Mistral</li>
+                  <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Jira + Azure DevOps</li>
+                  <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Templates POM personnalisés</li>
+                  <li className="flex items-start gap-2"><span className="text-green-500 mt-0.5">✓</span>Historique 30 jours</li>
+                </ul>
+              </CardContent>
+            </Card>
             <div className="relative bg-blue-600 text-white rounded-2xl p-7 border border-blue-500 shadow-lg shadow-blue-200/30">
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs bg-cyan-400 text-blue-900 font-bold px-3 py-0.5 rounded-full">
                 Recommandé
@@ -488,9 +509,11 @@ test.describe('US-42 — Authentification', () => {
           <p className="text-blue-100 mb-8 max-w-xl mx-auto">
             14 jours gratuits, sans carte bancaire. Configurez en 5 minutes, générez votre premier test en 10.
           </p>
-          <Link to="/register" className="inline-block px-8 py-4 bg-white text-blue-700 font-bold rounded-xl hover:bg-blue-50 transition-colors shadow-lg text-sm">
-            Créer mon espace équipe gratuitement
-          </Link>
+          <Button size="lg" className="bg-white text-blue-700 hover:bg-blue-50 shadow-lg font-bold" asChild>
+            <Link to="/register">
+              Créer mon espace équipe gratuitement
+            </Link>
+          </Button>
         </div>
       </section>
 

@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Card, CardContent } from '@/components/ui/card.js';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,60 +24,60 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">🔧 TestForge</h1>
-          <p className="mt-2 text-sm text-gray-500">Connectez-vous à votre espace équipe</p>
-        </div>
-
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="sarah@acme.com"
-            />
+      <Card className="w-full max-w-sm">
+        <CardContent className="p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900">🔧 TestForge</h1>
+            <p className="mt-2 text-sm text-gray-500">Connectez-vous à votre espace équipe</p>
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Mot de passe
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+            <div>
+              <Label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="sarah@acme.com"
+              />
+            </div>
 
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">{error}</p>
-          )}
+            <div>
+              <Label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Mot de passe
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
-        </form>
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">{error}</p>
+            )}
 
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Pas encore de compte ?{' '}
-          <Link to="/register" className="text-blue-600 hover:underline">Créer un espace équipe</Link>
-        </p>
-      </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? 'Connexion...' : 'Se connecter'}
+            </Button>
+          </form>
+
+          <p className="mt-4 text-center text-sm text-gray-500">
+            Pas encore de compte ?{' '}
+            <Link to="/register" className="text-blue-600 hover:underline">Créer un espace équipe</Link>
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

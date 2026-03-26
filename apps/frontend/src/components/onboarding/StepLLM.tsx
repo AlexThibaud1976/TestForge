@@ -1,5 +1,15 @@
 import { useState } from 'react';
 import { api } from '../../lib/api.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select.js';
 
 const DEFAULT_MODELS: Record<string, string> = {
   openai: 'gpt-4o',
@@ -37,8 +47,6 @@ export function StepLLM({ onComplete }: StepLLMProps) {
     }
   };
 
-  const inputClass = 'w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
-
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-600">
@@ -46,50 +54,52 @@ export function StepLLM({ onComplete }: StepLLMProps) {
       </p>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Provider</label>
-        <select
+        <Label className="block text-xs font-medium text-gray-700 mb-1">Provider</Label>
+        <Select
           value={provider}
-          onChange={(e) => handleProviderChange(e.target.value)}
-          className={inputClass}
+          onValueChange={(v) => handleProviderChange(v)}
           data-testid="llm-provider"
         >
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="azure_openai">Azure OpenAI</option>
-        </select>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="openai">OpenAI</SelectItem>
+            <SelectItem value="anthropic">Anthropic</SelectItem>
+            <SelectItem value="azure_openai">Azure OpenAI</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Clé API</label>
-        <input
+        <Label className="block text-xs font-medium text-gray-700 mb-1">Clé API</Label>
+        <Input
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={provider === 'openai' ? 'sk-...' : provider === 'anthropic' ? 'sk-ant-...' : ''}
-          className={inputClass}
           data-testid="llm-api-key"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Modèle</label>
-        <input
+        <Label className="block text-xs font-medium text-gray-700 mb-1">Modèle</Label>
+        <Input
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          className={inputClass}
           data-testid="llm-model"
         />
       </div>
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      <button
+      <Button
         onClick={() => void handleSave()}
         disabled={saving || !apiKey.trim()}
-        className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
+        className="w-full"
       >
         {saving ? 'Sauvegarde...' : 'Sauvegarder et continuer →'}
-      </button>
+      </Button>
     </div>
   );
 }

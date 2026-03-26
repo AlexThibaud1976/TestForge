@@ -1,6 +1,7 @@
 import { useConnectionFilter } from '../hooks/useConnectionFilter.js';
 import { useHistoryData } from '../hooks/useHistoryData.js';
 import { HistoryTree } from '../components/history/HistoryTree.js';
+import { Skeleton } from '@/components/ui/skeleton.js';
 
 export function HistoryPage() {
   const { connections, connectionId, setConnectionId } = useConnectionFilter();
@@ -54,7 +55,7 @@ export function HistoryPage() {
 
       {/* Contenu */}
       {loading ? (
-        <p className="text-sm text-gray-400">Chargement...</p>
+        <Skeleton className="h-8 w-48" />
       ) : totalGenerations === 0 ? (
         <div className="text-center py-16">
           <p className="text-5xl mb-4">🕐</p>

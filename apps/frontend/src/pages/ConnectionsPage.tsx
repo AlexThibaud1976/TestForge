@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { ProviderLogo } from '../components/ui/ProviderLogo.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Card, CardContent } from '@/components/ui/card.js';
 
 interface Connection {
   id: string;
@@ -66,18 +70,18 @@ export function ConnectionsPage() {
           <p className="text-sm text-gray-500 mt-1">Jira Cloud et Azure DevOps</p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={() => setShowForm('jira')}
-            className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700"
           >
             + Jira
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setShowForm('azure_devops')}
-            className="px-3 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+            className="bg-indigo-600 hover:bg-indigo-700"
           >
             + Azure DevOps
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -102,71 +106,79 @@ export function ConnectionsPage() {
       ) : (
         <div className="space-y-3">
           {connections.map((conn) => (
-            <div key={conn.id} className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <ProviderLogo provider={conn.type} size={16} />
-                    <span className="text-sm font-medium text-gray-900">{conn.name}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                      {conn.type === 'jira' ? 'Jira' : 'Azure DevOps'}
-                    </span>
+            <Card key={conn.id}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ProviderLogo provider={conn.type} size={16} />
+                      <span className="text-sm font-medium text-gray-900">{conn.name}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                        {conn.type === 'jira' ? 'Jira' : 'Azure DevOps'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{conn.baseUrl} · {conn.projectKey}</p>
+                    {conn.lastSyncAt && (
+                      <p className="text-xs text-gray-400">
+                        Synchro: {new Date(conn.lastSyncAt).toLocaleString('fr-FR')}
+                      </p>
+                    )}
+                    {conn.type === 'jira' && (
+                      <p className="text-xs mt-1">
+                        {conn.hasXray
+                          ? <span className="text-green-600">✅ Xray configuré ({conn.xrayClientId})</span>
+                          : <span className="text-gray-400">Xray non configuré</span>}
+                      </p>
+                    )}
+                    {testResult[conn.id] !== undefined && (
+                      <p className={`text-xs mt-1 ${testResult[conn.id] === true ? 'text-green-600' : 'text-red-600'}`}>
+                        {testResult[conn.id] === true ? '✓ Connexion OK' : `✗ ${String(testResult[conn.id])}`}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">{conn.baseUrl} · {conn.projectKey}</p>
-                  {conn.lastSyncAt && (
-                    <p className="text-xs text-gray-400">
-                      Synchro: {new Date(conn.lastSyncAt).toLocaleString('fr-FR')}
-                    </p>
-                  )}
-                  {conn.type === 'jira' && (
-                    <p className="text-xs mt-1">
-                      {conn.hasXray
-                        ? <span className="text-green-600">✅ Xray configuré ({conn.xrayClientId})</span>
-                        : <span className="text-gray-400">Xray non configuré</span>}
-                    </p>
-                  )}
-                  {testResult[conn.id] !== undefined && (
-                    <p className={`text-xs mt-1 ${testResult[conn.id] === true ? 'text-green-600' : 'text-red-600'}`}>
-                      {testResult[conn.id] === true ? '✓ Connexion OK' : `✗ ${String(testResult[conn.id])}`}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2 flex-wrap justify-end">
-                  <button
-                    onClick={() => void handleTest(conn.id)}
-                    disabled={testingId === conn.id}
-                    className="text-xs px-2 py-1 border border-gray-200 rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    {testingId === conn.id ? '...' : 'Tester'}
-                  </button>
-                  {conn.type === 'jira' && (
-                    <button
-                      onClick={() => setXrayFormId(xrayFormId === conn.id ? null : conn.id)}
-                      className="text-xs px-2 py-1 border border-purple-200 rounded text-purple-600 hover:bg-purple-50"
+                  <div className="flex gap-2 flex-wrap justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleTest(conn.id)}
+                      disabled={testingId === conn.id}
+                      className="text-xs"
                     >
-                      🔗 Xray
-                    </button>
-                  )}
-                  <button
-                    onClick={() => void handleDelete(conn.id)}
-                    className="text-xs px-2 py-1 border border-red-200 rounded text-red-500 hover:bg-red-50"
-                  >
-                    Supprimer
-                  </button>
+                      {testingId === conn.id ? '...' : 'Tester'}
+                    </Button>
+                    {conn.type === 'jira' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setXrayFormId(xrayFormId === conn.id ? null : conn.id)}
+                        className="text-xs border-purple-200 text-purple-600 hover:bg-purple-50"
+                      >
+                        🔗 Xray
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleDelete(conn.id)}
+                      className="text-xs border-red-200 text-red-500 hover:bg-red-50"
+                    >
+                      Supprimer
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              {xrayFormId === conn.id && conn.type === 'jira' && (
-                <XrayConfigForm
-                  connectionId={conn.id}
-                  currentClientId={conn.xrayClientId ?? null}
-                  onSaved={(updated) => {
-                    setConnections((prev) => prev.map((c) => c.id === conn.id ? { ...c, ...updated } : c));
-                    setXrayFormId(null);
-                  }}
-                  onCancel={() => setXrayFormId(null)}
-                />
-              )}
-            </div>
+                {xrayFormId === conn.id && conn.type === 'jira' && (
+                  <XrayConfigForm
+                    connectionId={conn.id}
+                    currentClientId={conn.xrayClientId ?? null}
+                    onSaved={(updated) => {
+                      setConnections((prev) => prev.map((c) => c.id === conn.id ? { ...c, ...updated } : c));
+                      setXrayFormId(null);
+                    }}
+                    onCancel={() => setXrayFormId(null)}
+                  />
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
@@ -238,12 +250,12 @@ function JiraForm({ onCreated, onCancel }: { onCreated: (c: Connection) => void;
 
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={loading} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+        <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700" size="sm">
           {loading ? 'Création...' : 'Créer'}
-        </button>
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Annuler
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -305,17 +317,17 @@ function XrayConfigForm({ connectionId, currentClientId, onSaved, onCancel }: {
       <p className="text-xs text-purple-500">Xray Cloud → Settings → API Keys</p>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={loading} className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50">
+        <Button type="submit" disabled={loading} size="sm" className="text-xs bg-purple-600 hover:bg-purple-700">
           {loading ? 'Enregistrement...' : 'Enregistrer'}
-        </button>
+        </Button>
         {currentClientId && (
-          <button type="button" onClick={() => void handleRemove()} disabled={loading} className="px-2 py-1 text-xs border border-red-200 text-red-500 rounded hover:bg-red-50">
+          <Button type="button" variant="outline" size="sm" onClick={() => void handleRemove()} disabled={loading} className="text-xs border-red-200 text-red-500 hover:bg-red-50">
             Retirer Xray
-          </button>
+          </Button>
         )}
-        <button type="button" onClick={onCancel} className="px-2 py-1 text-xs border border-gray-200 text-gray-500 rounded hover:bg-gray-50">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel} className="text-xs">
           Annuler
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -353,12 +365,12 @@ function ADOForm({ onCreated, onCancel }: { onCreated: (c: Connection) => void; 
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={loading} className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50">
+        <Button type="submit" disabled={loading} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
           {loading ? 'Création...' : 'Créer'}
-        </button>
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Annuler
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -369,14 +381,14 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
-      <input
+      <Label className="block text-xs font-medium text-gray-700 mb-1">{label}</Label>
+      <Input
         type={type}
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-2 py-1.5 text-sm"
       />
     </div>
   );
@@ -387,13 +399,13 @@ function OptionalField({ label, value, onChange, placeholder, type = 'text' }: {
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-      <input
+      <Label className="block text-xs font-medium text-gray-600 mb-1">{label}</Label>
+      <Input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+        className="w-full px-2 py-1.5 text-sm bg-white"
       />
     </div>
   );

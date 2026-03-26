@@ -3,6 +3,8 @@ import { StepConnection } from './StepConnection.js';
 import { StepLLM } from './StepLLM.js';
 import { StepFirstAnalysis } from './StepFirstAnalysis.js';
 import { ConfettiAnimation } from './ConfettiAnimation.js';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog.js';
+import { Button } from '@/components/ui/button.js';
 
 interface OnboardingWizardProps {
   hasConnection: boolean;
@@ -76,20 +78,26 @@ export function OnboardingWizard({
 
   if (showCelebration) {
     return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-        <ConfettiAnimation />
-        <div className="bg-white rounded-xl p-10 max-w-md w-full text-center relative z-10">
-          <p className="text-5xl mb-4">🎉</p>
-          <h2 className="text-xl font-semibold text-gray-900">TestForge est prêt !</h2>
-          <p className="text-gray-500 mt-2">Votre première US a été analysée avec succès.</p>
-          <button
+      <Dialog open={true} onOpenChange={(open) => { if (!open) onComplete(); }}>
+        <DialogContent className="max-w-md w-full text-center">
+          <ConfettiAnimation />
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900 text-center">
+              <span className="block text-5xl mb-4">🎉</span>
+              TestForge est prêt !
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 text-center">
+              Votre première US a été analysée avec succès.
+            </DialogDescription>
+          </DialogHeader>
+          <Button
             onClick={handleFinish}
-            className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            className="mt-2 bg-blue-600 hover:bg-blue-700"
           >
             Explorer mes User Stories →
-          </button>
-        </div>
-      </div>
+          </Button>
+        </DialogContent>
+      </Dialog>
     );
   }
 
@@ -102,16 +110,16 @@ export function OnboardingWizard({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl">
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onComplete(); }}>
+      <DialogContent className="w-full max-w-xl max-h-[90vh] flex flex-col p-0 gap-0">
 
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Bienvenue sur TestForge ! 🔧</h2>
-          <p className="text-sm text-gray-500 mt-1">
+        <DialogHeader className="p-6 border-b border-gray-200">
+          <DialogTitle className="text-xl font-semibold text-gray-900">Bienvenue sur TestForge ! 🔧</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mt-1">
             Suivez ces 3 étapes pour générer vos premiers tests automatisés.
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Stepper */}
         <div className="px-6 pt-4 pb-2 border-b border-gray-100">
@@ -144,32 +152,36 @@ export function OnboardingWizard({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-          <button
+        <DialogFooter className="p-4 border-t border-gray-200 flex items-center justify-between sm:justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleSkip}
-            className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600"
           >
             Passer
-          </button>
+          </Button>
           <div className="flex gap-2">
             {currentStep > 1 && (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handlePrevious}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
               >
                 ← Précédent
-              </button>
+              </Button>
             )}
-            <button
+            <Button
+              size="sm"
               onClick={handleNext}
               disabled={!isCurrentStepCompleted}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Suivant →
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

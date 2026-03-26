@@ -1,5 +1,15 @@
 import { useState } from 'react';
 import { api } from '../../lib/api.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select.js';
 
 type ConnectionType = 'jira' | 'azure_devops';
 
@@ -45,8 +55,6 @@ export function StepConnection({ onComplete }: StepConnectionProps) {
     }
   };
 
-  const inputClass = 'w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
-
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-600">
@@ -54,68 +62,72 @@ export function StepConnection({ onComplete }: StepConnectionProps) {
       </p>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Type de connexion</label>
-        <select
+        <Label className="block text-xs font-medium text-gray-700 mb-1">Type de connexion</Label>
+        <Select
           value={type}
-          onChange={(e) => handleTypeChange(e.target.value as ConnectionType)}
-          className={inputClass}
+          onValueChange={(v) => handleTypeChange(v as ConnectionType)}
           data-testid="connection-type"
         >
-          <option value="jira">Jira Cloud</option>
-          <option value="azure_devops">Azure DevOps</option>
-        </select>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="jira">Jira Cloud</SelectItem>
+            <SelectItem value="azure_devops">Azure DevOps</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Nom de la connexion</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        <Label className="block text-xs font-medium text-gray-700 mb-1">Nom de la connexion</Label>
+        <Input value={name} onChange={(e) => setName(e.target.value)} />
       </div>
 
       {type === 'jira' ? (
         <>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">URL Jira (ex: https://acme.atlassian.net)</label>
-            <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className={inputClass} placeholder="https://..." />
+            <Label className="block text-xs font-medium text-gray-700 mb-1">URL Jira (ex: https://acme.atlassian.net)</Label>
+            <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://..." />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+            <Label className="block text-xs font-medium text-gray-700 mb-1">Email</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">API Token</label>
-            <input type="password" value={apiToken} onChange={(e) => setApiToken(e.target.value)} className={inputClass} />
+            <Label className="block text-xs font-medium text-gray-700 mb-1">API Token</Label>
+            <Input type="password" value={apiToken} onChange={(e) => setApiToken(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Clé de projet (ex: PROJ)</label>
-            <input value={projectKey} onChange={(e) => setProjectKey(e.target.value)} className={inputClass} />
+            <Label className="block text-xs font-medium text-gray-700 mb-1">Clé de projet (ex: PROJ)</Label>
+            <Input value={projectKey} onChange={(e) => setProjectKey(e.target.value)} />
           </div>
         </>
       ) : (
         <>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">URL organisation (ex: https://dev.azure.com/acme)</label>
-            <input value={orgUrl} onChange={(e) => setOrgUrl(e.target.value)} className={inputClass} placeholder="https://..." />
+            <Label className="block text-xs font-medium text-gray-700 mb-1">URL organisation (ex: https://dev.azure.com/acme)</Label>
+            <Input value={orgUrl} onChange={(e) => setOrgUrl(e.target.value)} placeholder="https://..." />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Nom du projet</label>
-            <input value={project} onChange={(e) => setProject(e.target.value)} className={inputClass} />
+            <Label className="block text-xs font-medium text-gray-700 mb-1">Nom du projet</Label>
+            <Input value={project} onChange={(e) => setProject(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Personal Access Token (PAT)</label>
-            <input type="password" value={pat} onChange={(e) => setPat(e.target.value)} className={inputClass} />
+            <Label className="block text-xs font-medium text-gray-700 mb-1">Personal Access Token (PAT)</Label>
+            <Input type="password" value={pat} onChange={(e) => setPat(e.target.value)} />
           </div>
         </>
       )}
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      <button
+      <Button
         onClick={() => void handleSave()}
         disabled={saving}
-        className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
+        className="w-full"
       >
         {saving ? 'Sauvegarde...' : 'Sauvegarder et continuer →'}
-      </button>
+      </Button>
     </div>
   );
 }

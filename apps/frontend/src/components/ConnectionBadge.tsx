@@ -1,3 +1,6 @@
+import { Button } from './ui/button.js';
+import { Badge } from './ui/badge.js';
+
 interface ConnectionBadgeProps {
   name: string | null;
   type: 'jira' | 'azure_devops' | null;
@@ -7,7 +10,7 @@ interface ConnectionBadgeProps {
 
 export function ConnectionBadge({ name, type, connectionId, onClick }: ConnectionBadgeProps) {
   if (!name) {
-    return <span className="text-xs text-gray-400 italic px-2 py-0.5">Projet supprimé</span>;
+    return <Badge variant="secondary" className="text-gray-400 italic font-normal">Projet supprimé</Badge>;
   }
 
   const truncated = name.length > 20 ? name.slice(0, 20) + '…' : name;
@@ -27,17 +30,18 @@ export function ConnectionBadge({ name, type, connectionId, onClick }: Connectio
 
   if (onClick && connectionId) {
     return (
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="xs"
         onClick={(e) => {
           e.stopPropagation();
           onClick(connectionId);
         }}
-        className={`${baseClass} hover:bg-gray-100 transition-colors cursor-pointer`}
+        className="flex items-center gap-1 text-xs bg-gray-50 border border-gray-200 px-2 py-0.5 h-auto hover:bg-gray-100"
       >
         {indicator}
         <span>{truncated}</span>
-      </button>
+      </Button>
     );
   }
 

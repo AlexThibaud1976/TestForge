@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { ProviderLogo } from '../components/ui/ProviderLogo.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Card, CardContent } from '@/components/ui/card.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 
 type Provider = 'openai' | 'azure_openai' | 'anthropic' | 'mistral' | 'ollama';
 
@@ -101,12 +106,12 @@ export function LLMConfigPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Configuration LLM</h1>
           <p className="text-sm text-gray-500 mt-1">Provider utilisé pour l'analyse et la génération</p>
         </div>
-        <button
+        <Button
           onClick={() => setShowForm(true)}
-          className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="bg-blue-600 hover:bg-blue-700"
         >
           + Ajouter
-        </button>
+        </Button>
       </div>
 
       {showForm && <LLMForm onCreated={handleCreated} onCancel={() => setShowForm(false)} />}
@@ -121,69 +126,79 @@ export function LLMConfigPage() {
       ) : (
         <div className="space-y-3">
           {configs.map((config) => (
-            <div key={config.id} className={`bg-white border rounded-lg p-4 ${config.isDefault ? 'border-blue-300 ring-1 ring-blue-200' : 'border-gray-200'}`}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <ProviderLogo provider={config.provider} size={18} showLabel />
-                    <span className="text-sm font-medium text-gray-900">{PROVIDER_LABELS[config.provider]}</span>
-                    <span className="text-xs font-mono text-gray-400">{config.model}</span>
-                    {config.isDefault && (
-                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">Défaut</span>
+            <Card key={config.id} className={config.isDefault ? 'border-blue-300 ring-1 ring-blue-200' : ''}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ProviderLogo provider={config.provider} size={18} showLabel />
+                      <span className="text-sm font-medium text-gray-900">{PROVIDER_LABELS[config.provider]}</span>
+                      <span className="text-xs font-mono text-gray-400">{config.model}</span>
+                      {config.isDefault && (
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">Défaut</span>
+                      )}
+                    </div>
+                    {config.azureEndpoint && (
+                      <p className="text-xs text-gray-400 mt-1">{config.azureEndpoint}</p>
+                    )}
+                    {config.ollamaEndpoint && (
+                      <p className="text-xs text-gray-400 mt-1">{config.ollamaEndpoint}</p>
+                    )}
+                    {testResult[config.id] !== undefined && (
+                      <p className={`text-xs mt-1 ${testResult[config.id] === true ? 'text-green-600' : 'text-red-600'}`}>
+                        {testResult[config.id] === true ? '✓ Connexion OK' : `✗ ${String(testResult[config.id])}`}
+                      </p>
                     )}
                   </div>
-                  {config.azureEndpoint && (
-                    <p className="text-xs text-gray-400 mt-1">{config.azureEndpoint}</p>
-                  )}
-                  {config.ollamaEndpoint && (
-                    <p className="text-xs text-gray-400 mt-1">{config.ollamaEndpoint}</p>
-                  )}
-                  {testResult[config.id] !== undefined && (
-                    <p className={`text-xs mt-1 ${testResult[config.id] === true ? 'text-green-600' : 'text-red-600'}`}>
-                      {testResult[config.id] === true ? '✓ Connexion OK' : `✗ ${String(testResult[config.id])}`}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => void handleTest(config.id)}
-                    disabled={testingId === config.id}
-                    className="text-xs px-2 py-1 border border-gray-200 rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    {testingId === config.id ? '...' : 'Tester'}
-                  </button>
-                  <button
-                    onClick={() => setEditingId(editingId === config.id ? null : config.id)}
-                    className="text-xs px-2 py-1 border border-gray-200 rounded text-gray-600 hover:bg-gray-50"
-                  >
-                    Modifier
-                  </button>
-                  {!config.isDefault && (
-                    <button
-                      onClick={() => void handleSetDefault(config.id)}
-                      className="text-xs px-2 py-1 border border-blue-200 rounded text-blue-600 hover:bg-blue-50"
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleTest(config.id)}
+                      disabled={testingId === config.id}
+                      className="text-xs"
                     >
-                      Défaut
-                    </button>
-                  )}
-                  <button
-                    onClick={() => void handleDelete(config.id)}
-                    className="text-xs px-2 py-1 border border-red-200 rounded text-red-500 hover:bg-red-50"
-                  >
-                    ✕
-                  </button>
+                      {testingId === config.id ? '...' : 'Tester'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingId(editingId === config.id ? null : config.id)}
+                      className="text-xs"
+                    >
+                      Modifier
+                    </Button>
+                    {!config.isDefault && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleSetDefault(config.id)}
+                        className="text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                      >
+                        Défaut
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleDelete(config.id)}
+                      className="text-xs border-red-200 text-red-500 hover:bg-red-50"
+                    >
+                      ✕
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              {editingId === config.id && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <LLMEditForm
-                    config={config}
-                    onUpdated={handleUpdated}
-                    onCancel={() => setEditingId(null)}
-                  />
-                </div>
-              )}
-            </div>
+                {editingId === config.id && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <LLMEditForm
+                      config={config}
+                      onUpdated={handleUpdated}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
@@ -237,74 +252,78 @@ function LLMForm({ onCreated, onCancel }: { onCreated: (c: LLMConfig) => void; o
       <h3 className="text-sm font-semibold text-gray-800">Nouveau provider LLM</h3>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
         {(['openai', 'anthropic', 'azure_openai', 'mistral', 'ollama'] as const).map((p) => (
-          <button
+          <Button
             key={p}
             type="button"
             onClick={() => handleProviderChange(p)}
-            className={`px-2 py-2 text-xs font-medium rounded-md border transition-colors ${provider === p ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+            variant={provider === p ? 'default' : 'outline'}
+            size="sm"
+            className={`text-xs ${provider === p ? 'bg-blue-600 text-white border-blue-600' : ''}`}
           >
             {PROVIDER_LABELS[p]}
-          </button>
+          </Button>
         ))}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Modèle</label>
+          <Label className="block text-xs font-medium text-gray-700 mb-1">Modèle</Label>
           {hasModelInput ? (
-            <input type="text" required value={model} onChange={(e) => setModel(e.target.value)}
+            <Input type="text" required value={model} onChange={(e) => setModel(e.target.value)}
               placeholder={provider === 'ollama' ? 'llama3:8b, mistral, ...' : 'Deployment name'}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full text-sm" />
           ) : (
-            <select required value={model} onChange={(e) => setModel(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>{m.label}</option>
-              ))}
-            </select>
+            <Select required value={model} onValueChange={setModel}>
+              <SelectTrigger className="w-full text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
         {hasApiKey ? (
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">API Key</label>
-            <input type="password" required value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+            <Label className="block text-xs font-medium text-gray-700 mb-1">API Key</Label>
+            <Input type="password" required value={apiKey} onChange={(e) => setApiKey(e.target.value)}
               placeholder={provider === 'mistral' ? 'Clé API Mistral...' : 'sk-...'}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full text-sm" />
           </div>
         ) : (
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">URL Ollama</label>
-            <input type="url" required value={ollamaEndpoint} onChange={(e) => setOllamaEndpoint(e.target.value)}
+            <Label className="block text-xs font-medium text-gray-700 mb-1">URL Ollama</Label>
+            <Input type="url" required value={ollamaEndpoint} onChange={(e) => setOllamaEndpoint(e.target.value)}
               placeholder="http://localhost:11434"
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full text-sm" />
           </div>
         )}
         {provider === 'azure_openai' && (
           <>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Azure Endpoint</label>
-              <input type="url" required value={azureEndpoint} onChange={(e) => setAzureEndpoint(e.target.value)}
+              <Label className="block text-xs font-medium text-gray-700 mb-1">Azure Endpoint</Label>
+              <Input type="url" required value={azureEndpoint} onChange={(e) => setAzureEndpoint(e.target.value)}
                 placeholder="https://myresource.openai.azure.com"
-                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Deployment Name</label>
-              <input type="text" required value={azureDeployment} onChange={(e) => setAzureDeployment(e.target.value)}
+              <Label className="block text-xs font-medium text-gray-700 mb-1">Deployment Name</Label>
+              <Input type="text" required value={azureDeployment} onChange={(e) => setAzureDeployment(e.target.value)}
                 placeholder="my-gpt4o-deployment"
-                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full text-sm" />
             </div>
           </>
         )}
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={loading}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+        <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700" size="sm">
           {loading ? 'Création...' : 'Créer'}
-        </button>
-        <button type="button" onClick={onCancel}
-          className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Annuler
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -350,60 +369,62 @@ function LLMEditForm({ config, onUpdated, onCancel }: {
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Modèle</label>
+          <Label className="block text-xs font-medium text-gray-700 mb-1">Modèle</Label>
           {config.provider === 'azure_openai' ? (
-            <input type="text" value={model} onChange={(e) => setModel(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <Input type="text" value={model} onChange={(e) => setModel(e.target.value)}
+              className="w-full text-sm" />
           ) : (
-            <select value={model} onChange={(e) => setModel(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-              {(PROVIDER_MODELS[config.provider] ?? []).map((m) => (
-                <option key={m.id} value={m.id}>{m.label}</option>
-              ))}
-            </select>
+            <Select value={model} onValueChange={setModel}>
+              <SelectTrigger className="w-full text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(PROVIDER_MODELS[config.provider] ?? []).map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <Label className="block text-xs font-medium text-gray-700 mb-1">
             Nouvelle API Key <span className="text-gray-400 font-normal">(laisser vide pour conserver l&apos;actuelle)</span>
-          </label>
-          <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+          </Label>
+          <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk-..."
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full text-sm" />
         </div>
         {config.provider === 'azure_openai' && (
           <>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Azure Endpoint</label>
-              <input type="url" value={azureEndpoint} onChange={(e) => setAzureEndpoint(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <Label className="block text-xs font-medium text-gray-700 mb-1">Azure Endpoint</Label>
+              <Input type="url" value={azureEndpoint} onChange={(e) => setAzureEndpoint(e.target.value)}
+                className="w-full text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Deployment Name</label>
-              <input type="text" value={azureDeployment} onChange={(e) => setAzureDeployment(e.target.value)}
-                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <Label className="block text-xs font-medium text-gray-700 mb-1">Deployment Name</Label>
+              <Input type="text" value={azureDeployment} onChange={(e) => setAzureDeployment(e.target.value)}
+                className="w-full text-sm" />
             </div>
           </>
         )}
         {config.provider === 'ollama' && (
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">URL Ollama</label>
-            <input type="url" value={ollamaEndpoint} onChange={(e) => setOllamaEndpoint(e.target.value)}
+            <Label className="block text-xs font-medium text-gray-700 mb-1">URL Ollama</Label>
+            <Input type="url" value={ollamaEndpoint} onChange={(e) => setOllamaEndpoint(e.target.value)}
               placeholder="http://localhost:11434"
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full text-sm" />
           </div>
         )}
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={loading}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+        <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700" size="sm">
           {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-        </button>
-        <button type="button" onClick={onCancel}
-          className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Annuler
-        </button>
+        </Button>
       </div>
     </form>
   );

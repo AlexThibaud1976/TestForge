@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { Button } from './ui/button.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,37 +104,43 @@ export function FeedbackWidget({ generationId }: Props) {
       {/* Boutons thumbs */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-400">Ce code est-il utile ?</span>
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => handleRate('positive')}
           disabled={saving}
-          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${
-            rating === 'positive'
-              ? 'bg-green-50 text-green-700 border-green-300'
-              : 'text-gray-400 border-gray-200 hover:bg-gray-50'
-          }`}
           title="Utile"
+          className={
+            rating === 'positive'
+              ? 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100'
+              : ''
+          }
         >
           👍 {rating === 'positive' && saved ? 'Merci !' : 'Oui'}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => handleRate('negative')}
           disabled={saving}
-          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${
-            rating === 'negative'
-              ? 'bg-red-50 text-red-700 border-red-300'
-              : 'text-gray-400 border-gray-200 hover:bg-gray-50'
-          }`}
           title="À améliorer"
+          className={
+            rating === 'negative'
+              ? 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100'
+              : ''
+          }
         >
           👎 {rating === 'negative' && saved ? 'Noté' : 'Non'}
-        </button>
+        </Button>
         {rating === 'negative' && !showPanel && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowPanel(true)}
             className="text-xs text-gray-400 hover:text-gray-600 underline"
           >
             Détails
-          </button>
+          </Button>
         )}
       </div>
 
@@ -143,17 +150,19 @@ export function FeedbackWidget({ generationId }: Props) {
           <p className="text-xs font-medium text-red-700">Qu'est-ce qui ne va pas ?</p>
           <div className="flex flex-wrap gap-1.5">
             {ALL_TAGS.map((tag) => (
-              <button
+              <Button
                 key={tag}
+                variant={tags.includes(tag) ? 'secondary' : 'outline'}
+                size="xs"
                 onClick={() => toggleTag(tag)}
-                className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                className={
                   tags.includes(tag)
-                    ? 'bg-red-100 text-red-700 border-red-400'
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-red-200'
-                }`}
+                    ? 'bg-red-100 text-red-700 border-red-400 hover:bg-red-200 rounded-full'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-red-200 rounded-full'
+                }
               >
                 {TAG_LABELS[tag]}
-              </button>
+              </Button>
             ))}
           </div>
           <textarea
@@ -167,19 +176,22 @@ export function FeedbackWidget({ generationId }: Props) {
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">{comment.length}/500</span>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowPanel(false)}
                 className="text-xs text-gray-400 hover:text-gray-600"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={() => void submitFeedback('negative', tags, comment)}
                 disabled={saving}
-                className="text-xs bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
                 {saving ? 'Envoi...' : 'Envoyer'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

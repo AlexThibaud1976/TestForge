@@ -6,6 +6,8 @@ import { ScoreDistribution } from '../components/analytics/ScoreDistribution.js'
 import { ScoreEvolution } from '../components/analytics/ScoreEvolution.js';
 import { ProjectBreakdown } from '../components/analytics/ProjectBreakdown.js';
 import { TimeEstimateConfig } from '../components/analytics/TimeEstimateConfig.js';
+import { Skeleton } from '@/components/ui/skeleton.js';
+import { Alert, AlertDescription } from '@/components/ui/alert.js';
 
 export function AnalyticsDashboardPage() {
   const { connections, connectionId, setConnectionId } = useConnectionFilter();
@@ -36,11 +38,11 @@ export function AnalyticsDashboardPage() {
         )}
       </div>
 
-      {loading && <p className="text-sm text-gray-400">Chargement...</p>}
+      {loading && <Skeleton className="h-8 w-48" />}
       {error && (
-        <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-4">
-          Erreur : {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>Erreur : {error}</AlertDescription>
+        </Alert>
       )}
 
       {!loading && data && (

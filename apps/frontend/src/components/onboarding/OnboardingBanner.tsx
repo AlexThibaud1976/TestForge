@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../../lib/api.js';
+import { Button } from '../ui/button.js';
 
 interface Team { plan: string; }
 interface Connection { id: string; }
@@ -86,7 +87,7 @@ export function OnboardingBanner() {
           </h3>
           <p className="text-xs text-blue-600 mt-0.5">Suivez ces étapes pour générer vos premiers tests</p>
         </div>
-        <button onClick={handleDismiss} className="text-blue-400 hover:text-blue-600 text-lg leading-none">×</button>
+        <Button variant="ghost" size="xs" onClick={handleDismiss}>×</Button>
       </div>
 
       {/* Progress bar */}
@@ -117,12 +118,14 @@ export function OnboardingBanner() {
             </div>
             <p className="text-xs text-gray-500 mb-2">{step.description}</p>
             {!step.done && (
-              <button
+              <Button
+                variant="link"
+                size="sm"
+                className="p-0 h-auto text-xs"
                 onClick={() => void navigate(step.path)}
-                className="text-xs text-blue-600 font-medium hover:underline"
               >
                 {step.action} →
-              </button>
+              </Button>
             )}
           </div>
         ))}

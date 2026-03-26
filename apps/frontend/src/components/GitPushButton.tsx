@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { Button } from '@/components/ui/button.js';
+import { Label } from '@/components/ui/label.js';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog.js';
 
 interface GitConfig {
   id: string;
@@ -73,68 +76,66 @@ export function GitPushButton({ generationId }: Props) {
 
   return (
     <>
-      <button
-        onClick={() => setShowDialog(true)}
-        className="flex items-center gap-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50"
-      >
+      <Button variant="outline" size="sm" onClick={() => setShowDialog(true)}>
         ↑ Pousser vers Git
-      </button>
+      </Button>
 
-      {showDialog && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Pousser vers Git</h3>
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pousser vers Git</DialogTitle>
+          </DialogHeader>
 
-            {configs.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                Aucun repo configuré.{' '}
-                <a href="/settings/git" className="text-indigo-600 underline">Configurer un repo →</a>
-              </p>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Repo cible</label>
-                  <select
-                    value={selectedConfig}
-                    onChange={(e) => setSelectedConfig(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  >
-                    {configs.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mode</label>
-                  <div className="flex gap-3">
-                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                      <input type="radio" value="pr" checked={mode === 'pr'} onChange={() => setMode('pr')} />
-                      Pull Request
-                    </label>
-                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                      <input type="radio" value="commit" checked={mode === 'commit'} onChange={() => setMode('commit')} />
-                      Commit direct
-                    </label>
-                  </div>
-                </div>
-                {error && <p className="text-sm text-red-600">❌ {error}</p>}
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => void handlePush()}
-                    disabled={pushing}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    {pushing ? 'Push en cours...' : 'Pousser'}
-                  </button>
-                  <button onClick={() => setShowDialog(false)} className="text-gray-600 px-4 py-2 text-sm hover:text-gray-900">
-                    Annuler
-                  </button>
+          {configs.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Aucun repo configuré.{' '}
+              <a href="/settings/git" className="text-indigo-600 underline">Configurer un repo →</a>
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label className="block text-sm font-medium text-gray-700 mb-1">Repo cible</Label>
+                <select
+                  value={selectedConfig}
+                  onChange={(e) => setSelectedConfig(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  {configs.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-gray-700 mb-1">Mode</Label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input type="radio" value="pr" checked={mode === 'pr'} onChange={() => setMode('pr')} />
+                    Pull Request
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input type="radio" value="commit" checked={mode === 'commit'} onChange={() => setMode('commit')} />
+                    Commit direct
+                  </label>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+              {error && <p className="text-sm text-red-600">❌ {error}</p>}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={() => void handlePush()}
+              disabled={pushing || configs.length === 0}
+              variant="indigo"
+            >
+              {pushing ? 'Push en cours...' : 'Pousser'}
+            </Button>
+            <Button variant="ghost" onClick={() => setShowDialog(false)}>
+              Annuler
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

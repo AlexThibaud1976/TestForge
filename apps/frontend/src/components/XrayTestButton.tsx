@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../lib/api.js';
+import { Button } from '@/components/ui/button.js';
 
 interface Props {
   generationId: string;
@@ -33,13 +34,14 @@ export function XrayTestButton({ generationId }: Props) {
 
   return (
     <div>
-      <button
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => void handleCreate()}
         disabled={creating}
-        className="flex items-center gap-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
       >
         🔗 {creating ? 'Création...' : 'Créer test Xray'}
-      </button>
+      </Button>
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
     </div>
   );

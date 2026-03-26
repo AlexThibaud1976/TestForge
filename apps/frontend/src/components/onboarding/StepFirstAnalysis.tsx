@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api.js';
+import { Button } from '@/components/ui/button.js';
+import { Skeleton } from '@/components/ui/skeleton.js';
 
 interface UserStory {
   id: string;
@@ -60,7 +62,7 @@ export function StepFirstAnalysis({ onComplete }: StepFirstAnalysisProps) {
       {loadingStories ? (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />
+            <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
       ) : stories.length === 0 ? (
@@ -103,13 +105,13 @@ export function StepFirstAnalysis({ onComplete }: StepFirstAnalysisProps) {
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      <button
+      <Button
         onClick={() => void handleAnalyze()}
         disabled={!selectedId || analyzing || stories.length === 0}
-        className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
+        className="w-full"
       >
         {analyzing ? 'Analyse en cours...' : 'Analyser cette US →'}
-      </button>
+      </Button>
     </div>
   );
 }

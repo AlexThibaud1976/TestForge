@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { supabase } from '../lib/supabase.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Card, CardContent } from '@/components/ui/card.js';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -35,46 +39,44 @@ export function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">🔧 TestForge</h1>
-          <p className="mt-2 text-sm text-gray-500">Créer votre espace équipe</p>
-          <p className="mt-1 text-xs text-green-600 font-medium">14 jours gratuits · sans CB</p>
-        </div>
-
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'équipe</label>
-            <input type="text" required value={form.teamName} onChange={set('teamName')}
-              placeholder="Acme QA Team"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" required value={form.email} onChange={set('email')}
-              placeholder="sarah@acme.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
-            <input type="password" required minLength={8} value={form.password} onChange={set('password')}
-              placeholder="8 caractères minimum"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <Card className="w-full max-w-sm">
+        <CardContent className="p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900">🔧 TestForge</h1>
+            <p className="mt-2 text-sm text-gray-500">Créer votre espace équipe</p>
+            <p className="mt-1 text-xs text-green-600 font-medium">14 jours gratuits · sans CB</p>
           </div>
 
-          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">{error}</p>}
+          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+            <div>
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'équipe</Label>
+              <Input type="text" required value={form.teamName} onChange={set('teamName')}
+                placeholder="Acme QA Team" />
+            </div>
+            <div>
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Email</Label>
+              <Input type="email" required value={form.email} onChange={set('email')}
+                placeholder="sarah@acme.com" />
+            </div>
+            <div>
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe</Label>
+              <Input type="password" required minLength={8} value={form.password} onChange={set('password')}
+                placeholder="8 caractères minimum" />
+            </div>
 
-          <button type="submit" disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {loading ? 'Création...' : 'Créer mon espace équipe'}
-          </button>
-        </form>
+            {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">{error}</p>}
 
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Déjà un compte ?{' '}
-          <Link to="/login" className="text-blue-600 hover:underline">Se connecter</Link>
-        </p>
-      </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Création...' : 'Créer mon espace équipe'}
+            </Button>
+          </form>
+
+          <p className="mt-4 text-center text-sm text-gray-500">
+            Déjà un compte ?{' '}
+            <Link to="/login" className="text-blue-600 hover:underline">Se connecter</Link>
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

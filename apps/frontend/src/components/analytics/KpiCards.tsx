@@ -1,3 +1,6 @@
+import { Card, CardContent } from '@/components/ui/card.js';
+import { Button } from '@/components/ui/button.js';
+
 interface KpiCardsProps {
   averageScore: number;
   totalAnalyses: number;
@@ -31,41 +34,51 @@ export function KpiCards({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       {/* Score moyen */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div
-          data-testid="score-badge"
-          className={`inline-flex items-center px-3 py-1.5 rounded-lg text-2xl font-bold border ${scoreColor(averageScore)}`}
-        >
-          {averageScore}
-        </div>
-        <div className="text-sm text-gray-500 mt-2">Score moyen</div>
-        <div className="text-xs text-gray-400">/100</div>
-      </div>
+      <Card>
+        <CardContent className="p-5">
+          <div
+            data-testid="score-badge"
+            className={`inline-flex items-center px-3 py-1.5 rounded-lg text-2xl font-bold border ${scoreColor(averageScore)}`}
+          >
+            {averageScore}
+          </div>
+          <div className="text-sm text-gray-500 mt-2">Score moyen</div>
+          <div className="text-xs text-gray-400">/100</div>
+        </CardContent>
+      </Card>
 
       {/* Analyses */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="text-3xl font-bold text-gray-900">{totalAnalyses}</div>
-        <div className="text-sm text-gray-500 mt-1">Analyses</div>
-      </div>
+      <Card>
+        <CardContent className="p-5">
+          <div className="text-3xl font-bold text-gray-900">{totalAnalyses}</div>
+          <div className="text-sm text-gray-500 mt-1">Analyses</div>
+        </CardContent>
+      </Card>
 
       {/* Générations */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="text-3xl font-bold text-gray-900">{totalGenerations}</div>
-        <div className="text-sm text-gray-500 mt-1">Tests générés</div>
-      </div>
+      <Card>
+        <CardContent className="p-5">
+          <div className="text-3xl font-bold text-gray-900">{totalGenerations}</div>
+          <div className="text-sm text-gray-500 mt-1">Tests générés</div>
+        </CardContent>
+      </Card>
 
       {/* Temps économisé */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="text-3xl font-bold text-gray-900">{formatTimeSaved(timeSavedMinutes)}</div>
-        <div className="text-sm text-gray-500 mt-1">Temps économisé</div>
-        <button
-          onClick={onEditEstimate}
-          className="text-xs text-gray-400 hover:text-gray-600 mt-0.5 flex items-center gap-1"
-        >
-          <span>({manualTestMinutes} min/test)</span>
-          <span>⚙️</span>
-        </button>
-      </div>
+      <Card>
+        <CardContent className="p-5">
+          <div className="text-3xl font-bold text-gray-900">{formatTimeSaved(timeSavedMinutes)}</div>
+          <div className="text-sm text-gray-500 mt-1">Temps économisé</div>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={onEditEstimate}
+            className="text-xs text-gray-400 hover:text-gray-600 mt-0.5 flex items-center gap-1 px-0"
+          >
+            <span>({manualTestMinutes} min/test)</span>
+            <span>⚙️</span>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { Button } from '@/components/ui/button.js';
+import { Label } from '@/components/ui/label.js';
+import { Card, CardContent } from '@/components/ui/card.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+import { Textarea } from '@/components/ui/textarea.js';
 
 interface PomTemplate {
   id: string;
@@ -57,55 +62,67 @@ export function PomTemplatesPage() {
             Définissez un template de Page Object pour chaque framework/langage. Il sera injecté dans le prompt de génération.
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setShowForm(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+          className="bg-indigo-600 hover:bg-indigo-700"
         >
           + Nouveau template
-        </button>
+        </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSave} className="bg-white border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
+        <form onSubmit={(e) => void handleSave(e)} className="bg-white border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
           <h2 className="font-semibold text-gray-900">Nouveau template POM</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Framework</label>
-              <select
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Framework</Label>
+              <Select
                 value={form.framework}
-                onChange={(e) => setForm((f) => ({ ...f, framework: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                onValueChange={(v) => setForm((f) => ({ ...f, framework: v }))}
               >
-                {FRAMEWORKS.map((fw) => <option key={fw} value={fw}>{fw}</option>)}
-              </select>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FRAMEWORKS.map((fw) => (
+                    <SelectItem key={fw} value={fw}>{fw}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Langage</label>
-              <select
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Langage</Label>
+              <Select
                 value={form.language}
-                onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                onValueChange={(v) => setForm((f) => ({ ...f, language: v }))}
               >
-                {LANGUAGES.map((lang) => <option key={lang} value={lang}>{lang}</option>)}
-              </select>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Template (coller un exemple de Page Object)</label>
-            <textarea
+            <Label className="block text-sm font-medium text-gray-700 mb-1">Template (coller un exemple de Page Object)</Label>
+            <Textarea
               value={form.content}
               onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
               rows={12}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
+              className="w-full font-mono text-sm"
               placeholder="import { type Page, type Locator } from '@playwright/test';\n\nexport class BasePage { ... }"
               required
             />
           </div>
           <div className="flex gap-3">
-            <button type="submit" disabled={saving} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+            <Button type="submit" disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
               {saving ? 'Enregistrement...' : 'Enregistrer'}
-            </button>
-            <button type="button" onClick={() => setShowForm(false)} className="text-gray-600 px-4 py-2 text-sm hover:text-gray-900">Annuler</button>
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Annuler</Button>
           </div>
         </form>
       )}
@@ -120,18 +137,22 @@ export function PomTemplatesPage() {
       ) : (
         <div className="space-y-3">
           {templates.map((t) => (
-            <div key={t.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <div className="font-medium text-gray-900 text-sm font-mono">{t.framework} / {t.language}</div>
-                <div className="text-xs text-gray-400 mt-0.5 truncate max-w-sm">{t.content.slice(0, 80)}…</div>
-              </div>
-              <button
-                onClick={() => handleDelete(t.id)}
-                className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-1"
-              >
-                Supprimer
-              </button>
-            </div>
+            <Card key={t.id}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-gray-900 text-sm font-mono">{t.framework} / {t.language}</div>
+                  <div className="text-xs text-gray-400 mt-0.5 truncate max-w-sm">{t.content.slice(0, 80)}…</div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleDelete(t.id)}
+                  className="text-xs text-red-500 border-red-200 hover:text-red-700"
+                >
+                  Supprimer
+                </Button>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

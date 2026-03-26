@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 
 interface Sprint {
   id: string;
@@ -51,92 +56,106 @@ export function SyncDialog({ connectionId, connectionName, onSync, onCancel, loa
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">Synchroniser — {connectionName}</h3>
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onCancel(); }}>
+      <DialogContent className="w-full max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold text-gray-900">
+            Synchroniser — {connectionName}
+          </DialogTitle>
+        </DialogHeader>
 
-        {/* Sprint */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Sprint <span className="text-gray-400 font-normal">(optionnel)</span>
-          </label>
-          {loadingSprints ? (
-            <div className="text-xs text-gray-400">Chargement des sprints...</div>
-          ) : sprints.length > 0 ? (
-            <select
-              value={sprint}
-              onChange={(e) => setSprint(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">Tout le projet</option>
-              {sprints.map((s) => (
-                <option key={s.id} value={s.name}>{s.name}{s.state === 'active' ? ' (actif)' : ''}</option>
-              ))}
-            </select>
-          ) : (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={sprint}
-                onChange={(e) => setSprint(e.target.value)}
-                placeholder="Nom du sprint (ex: Sprint 14)"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              />
-              <span className="text-xs text-gray-400">Pas de sprints détectés</span>
-            </div>
-          )}
-        </div>
-
-        {/* Statuts */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Statuts <span className="text-gray-400 font-normal">(optionnel — tous si vide)</span>
-          </label>
-          <div className="flex flex-wrap gap-1.5">
-            {COMMON_STATUSES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleStatus(s)}
-                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                  selectedStatuses.includes(s)
-                    ? 'bg-indigo-100 text-indigo-700 border-indigo-400'
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-200'
-                }`}
+        <div className="space-y-4">
+          {/* Sprint */}
+          <div>
+            <Label className="block text-sm font-medium text-gray-700 mb-1">
+              Sprint <span className="text-gray-400 font-normal">(optionnel)</span>
+            </Label>
+            {loadingSprints ? (
+              <div className="text-xs text-gray-400">Chargement des sprints...</div>
+            ) : sprints.length > 0 ? (
+              <Select
+                value={sprint === '' ? '__all__' : sprint}
+                onValueChange={(v) => setSprint(v === '__all__' ? '' : v)}
               >
-                {s}
-              </button>
-            ))}
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Tout le projet</SelectItem>
+                  {sprints.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}{s.state === 'active' ? ' (actif)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  value={sprint}
+                  onChange={(e) => setSprint(e.target.value)}
+                  placeholder="Nom du sprint (ex: Sprint 14)"
+                  className="flex-1 text-sm"
+                />
+                <span className="text-xs text-gray-400">Pas de sprints détectés</span>
+              </div>
+            )}
+          </div>
+
+          {/* Statuts */}
+          <div>
+            <Label className="block text-sm font-medium text-gray-700 mb-1">
+              Statuts <span className="text-gray-400 font-normal">(optionnel — tous si vide)</span>
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {COMMON_STATUSES.map((s) => (
+                <Button
+                  key={s}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleStatus(s)}
+                  className={`text-xs rounded-full px-2.5 py-1 h-auto transition-colors ${
+                    selectedStatuses.includes(s)
+                      ? 'bg-indigo-100 text-indigo-700 border-indigo-400'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-200'
+                  }`}
+                >
+                  {s}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Labels */}
+          <div>
+            <Label className="block text-sm font-medium text-gray-700 mb-1">
+              Labels <span className="text-gray-400 font-normal">(séparés par virgule)</span>
+            </Label>
+            <Input
+              type="text"
+              value={labelsInput}
+              onChange={(e) => setLabelsInput(e.target.value)}
+              placeholder="ready-for-qa, sprint-14"
+              className="w-full text-sm"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              onClick={handleSync}
+              disabled={loading}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {loading ? '↻ Sync...' : 'Synchroniser'}
+            </Button>
+            <Button variant="outline" onClick={onCancel}>
+              Annuler
+            </Button>
           </div>
         </div>
-
-        {/* Labels */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Labels <span className="text-gray-400 font-normal">(séparés par virgule)</span>
-          </label>
-          <input
-            type="text"
-            value={labelsInput}
-            onChange={(e) => setLabelsInput(e.target.value)}
-            placeholder="ready-for-qa, sprint-14"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={handleSync}
-            disabled={loading}
-            className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {loading ? '↻ Sync...' : 'Synchroniser'}
-          </button>
-          <button onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-            Annuler
-          </button>
-        </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

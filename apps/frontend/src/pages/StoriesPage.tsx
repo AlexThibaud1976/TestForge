@@ -6,6 +6,9 @@ import { ConnectionBadge } from '../components/ConnectionBadge.js';
 import { BatchAnalysisModal } from '../components/batch/BatchAnalysisModal.js';
 import { DuplicatesPanel, type DuplicatePair } from '../components/DuplicatesPanel.js';
 import { SyncDialog, type SyncFilters } from '../components/SyncDialog.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Skeleton } from '@/components/ui/skeleton.js';
 
 interface UserStory {
   id: string;
@@ -158,41 +161,49 @@ export function StoriesPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-gray-900">User Stories</h1>
             {duplicates.length > 0 && (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowDuplicates(true)}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-300 rounded-full hover:bg-orange-100 font-medium"
+                className="text-orange-700 border-orange-300 bg-orange-50 hover:bg-orange-100 rounded-full"
               >
                 ⚠️ Doublons potentiels ({duplicates.length})
-              </button>
+              </Button>
             )}
           </div>
           <p className="text-sm text-gray-500 mt-1">{total} story{total !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {filteredStories.length > 0 && (
-            <button
+            <Button
+              variant="indigo"
               onClick={() => setBatchModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
               📊 Analyser ({batchStories.length} stories)
-            </button>
+            </Button>
           )}
           {connections.map((conn) => (
-            <button key={conn.id}
+            <Button key={conn.id}
+              variant="outline"
+              size="sm"
               onClick={() => setSyncDialog(conn.id)}
               disabled={syncing === conn.id}
-              className="px-3 py-2 text-sm font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+            >
               {syncing === conn.id ? '↻ Sync...' : `↻ ${conn.name}`}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       {/* Filtres */}
       <div className="flex gap-3 mb-3 flex-wrap">
-        <input type="text" placeholder="🔍 Rechercher..." value={search}
+        <Input
+          type="text"
+          placeholder="🔍 Rechercher..."
+          value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="flex-1 min-w-40 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="flex-1 min-w-40"
+        />
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">Tous statuts</option>
@@ -238,7 +249,7 @@ export function StoriesPage() {
       {/* Liste */}
       {loading ? (
         <div className="space-y-2">
-          {[...Array(5)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />)}
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
         </div>
       ) : stories.length === 0 ? (
         <div className="text-center py-16">

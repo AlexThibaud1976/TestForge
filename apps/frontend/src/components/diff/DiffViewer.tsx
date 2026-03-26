@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { computeWordDiff } from '../../utils/diff.js';
 import { DiffViewerUnified } from './DiffViewerUnified.js';
 import { DiffViewerSideBySide } from './DiffViewerSideBySide.js';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { Badge } from '@/components/ui/badge.js';
 
 interface DiffViewerProps {
   original: string;
@@ -17,31 +19,15 @@ export function DiffViewer({ original, improved }: DiffViewerProps) {
     <div>
       {/* Header : compteur de modifications + toggle */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-gray-500">
-          {`${changeCount} modification${changeCount > 1 ? 's' : ''}`}
-        </span>
-        <div className="flex gap-1 bg-gray-100 rounded-md p-0.5">
-          <button
-            onClick={() => setMode('unified')}
-            className={`text-xs px-2 py-1 rounded transition-colors ${
-              mode === 'unified'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Unifié
-          </button>
-          <button
-            onClick={() => setMode('side-by-side')}
-            className={`text-xs px-2 py-1 rounded transition-colors hidden md:block ${
-              mode === 'side-by-side'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Côte à côte
-          </button>
-        </div>
+        <Badge variant="secondary">
+          {changeCount} modification{changeCount > 1 ? 's' : ''}
+        </Badge>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as 'unified' | 'side-by-side')}>
+          <TabsList>
+            <TabsTrigger value="unified" onClick={() => setMode('unified')}>Unifié</TabsTrigger>
+            <TabsTrigger value="side-by-side" className="hidden md:inline-flex" onClick={() => setMode('side-by-side')}>Côte à côte</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {mode === 'unified' ? (

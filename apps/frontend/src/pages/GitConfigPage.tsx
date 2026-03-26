@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { ProviderLogo } from '../components/ui/ProviderLogo.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Card, CardContent } from '@/components/ui/card.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 
 interface GitConfig {
   id: string;
@@ -81,12 +86,12 @@ export function GitConfigPage() {
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Configurations Git</h1>
-        <button
+        <Button
           onClick={() => { setShowForm(true); setSaveError(null); }}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+          className="bg-indigo-600 hover:bg-indigo-700"
         >
           + Nouveau repo
-        </button>
+        </Button>
       </div>
 
       {showForm && (
@@ -94,70 +99,74 @@ export function GitConfigPage() {
           <h2 className="font-semibold text-gray-900">Ajouter un repo Git</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
-              <select
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Provider</Label>
+              <Select
                 value={form.provider}
-                onChange={(e) => setForm((f) => ({ ...f, provider: e.target.value as GitConfig['provider'] }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                onValueChange={(v) => setForm((f) => ({ ...f, provider: v as GitConfig['provider'] }))}
               >
-                <option value="github">GitHub</option>
-                <option value="gitlab">GitLab</option>
-                <option value="azure_repos">Azure Repos</option>
-              </select>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="github">GitHub</SelectItem>
+                  <SelectItem value="gitlab">GitLab</SelectItem>
+                  <SelectItem value="azure_repos">Azure Repos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-              <input
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Nom</Label>
+              <Input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Repo Tests E2E"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full text-sm"
                 required
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL du repo</label>
-            <input
+            <Label className="block text-sm font-medium text-gray-700 mb-1">URL du repo</Label>
+            <Input
               type="url"
               value={form.repoUrl}
               onChange={(e) => setForm((f) => ({ ...f, repoUrl: e.target.value }))}
               placeholder="https://github.com/org/repo"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              className="w-full text-sm"
               required
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Token PAT</label>
-              <input
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Token PAT</Label>
+              <Input
                 type="password"
                 value={form.token}
                 onChange={(e) => setForm((f) => ({ ...f, token: e.target.value }))}
                 placeholder="ghp_xxxx"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full text-sm"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Branche par défaut</label>
-              <input
+              <Label className="block text-sm font-medium text-gray-700 mb-1">Branche par défaut</Label>
+              <Input
                 type="text"
                 value={form.defaultBranch}
                 onChange={(e) => setForm((f) => ({ ...f, defaultBranch: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full text-sm"
               />
             </div>
           </div>
           {saveError && <p className="text-sm text-red-600">❌ {saveError}</p>}
           <div className="flex gap-3">
-            <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
+            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
               Enregistrer
-            </button>
-            <button type="button" onClick={() => setShowForm(false)} className="text-gray-600 px-4 py-2 text-sm hover:text-gray-900">
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
               Annuler
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -172,32 +181,39 @@ export function GitConfigPage() {
       ) : (
         <div className="space-y-3">
           {configs.map((config) => (
-            <div key={config.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <ProviderLogo provider={config.provider} size={16} showLabel />
-                  <span className="font-medium text-gray-900 text-sm">{config.name}</span>
+            <Card key={config.id}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <ProviderLogo provider={config.provider} size={16} showLabel />
+                    <span className="font-medium text-gray-900 text-sm">{config.name}</span>
+                    <span className="text-xs text-gray-400">{PROVIDER_LABELS[config.provider]}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {config.repoUrl} · branche: {config.defaultBranch}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {config.repoUrl} · branche: {config.defaultBranch}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleTest(config.id)}
+                    disabled={testing === config.id}
+                    className="text-xs text-indigo-600 border-indigo-200 hover:text-indigo-800"
+                  >
+                    {testing === config.id ? 'Test...' : 'Tester'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleDelete(config.id)}
+                    className="text-xs text-red-500 border-red-200 hover:text-red-700"
+                  >
+                    Supprimer
+                  </Button>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => void handleTest(config.id)}
-                  disabled={testing === config.id}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded px-2 py-1"
-                >
-                  {testing === config.id ? 'Test...' : 'Tester'}
-                </button>
-                <button
-                  onClick={() => void handleDelete(config.id)}
-                  className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-1"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
           {testResult && (
             <div className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">{testResult}</div>

@@ -7,6 +7,7 @@ import { OnboardingBanner } from '../onboarding/OnboardingBanner.js';
 import { OnboardingWizard } from '../onboarding/OnboardingWizard.js';
 import { useOnboardingState } from '../../hooks/useOnboardingState.js';
 import { Logo } from '../ui/Logo.js';
+import { Button } from '../ui/button.js';
 import {
   LayoutGrid,
   Clock,
@@ -135,12 +136,14 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
             <span className="truncate flex-1">{user?.email ?? ''}</span>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleSignOut}
-            className="w-full mt-1 px-3 py-1.5 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors text-left"
+            className="w-full mt-1 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 justify-start"
           >
             Se déconnecter
-          </button>
+          </Button>
         </div>
       </aside>
 

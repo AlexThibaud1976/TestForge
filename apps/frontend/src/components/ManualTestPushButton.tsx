@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../lib/api.js';
 import type { ManualTestSet } from '@testforge/shared-types';
+import { Button } from './ui/button.js';
 
 interface PushResult {
   pushed: number;
@@ -57,13 +58,14 @@ export function ManualTestPushButton({ setId, status, onPushed }: Props) {
           ADO Test Plans
         </label>
       </div>
-      <button
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => void handlePush()}
         disabled={pushing}
-        className="flex items-center gap-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
       >
         🔗 {pushing ? 'Push en cours...' : `Pousser vers ${target === 'xray' ? 'Xray' : 'ADO'}`}
-      </button>
+      </Button>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );

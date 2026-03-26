@@ -19,6 +19,10 @@ import { ManualTestGenerateButton } from '../components/ManualTestGenerateButton
 import { ManualTestValidateButton } from '../components/ManualTestValidateButton.js';
 import { ManualTestPushButton } from '../components/ManualTestPushButton.js';
 import { DiffViewer } from '../components/diff/DiffViewer.js';
+import { Button } from '@/components/ui/button.js';
+import { Badge } from '@/components/ui/badge.js';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card.js';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import type { ManualTestSet } from '@testforge/shared-types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -161,11 +165,15 @@ export function StoryDetailPage() {
     }
   };
 
-  const checkChangeStatus = (analysisId: string) => {
+  const checkChangeStatus = (_analysisId: string) => {
     api.get<{ changed: boolean; generationId: string | null }>(`/api/user-stories/${story?.id}/change-status`)
       .then(setChangeStatus)
       .catch(() => setChangeStatus(null));
   };
+
+  // suppress unused warning — used externally if needed
+  void checkChangeStatus;
+  void showIncrementalDialog;
 
   const displayText = activeVersion === 'improved' && analysis?.improvedVersion
     ? analysis.improvedVersion : story?.description ?? '';
@@ -176,7 +184,7 @@ export function StoryDetailPage() {
   if (!story) return (
     <div className="p-6">
       <p className="text-sm text-red-500">User story introuvable.</p>
-      <button onClick={() => void navigate('/stories')} className="mt-2 text-sm text-blue-600 hover:underline">← Retour</button>
+      <Button variant="link" onClick={() => void navigate('/stories')} className="mt-2 text-sm">← Retour</Button>
     </div>
   );
 
@@ -201,32 +209,60 @@ export function StoryDetailPage() {
           ))}
         </div>
 
-        {/* Onglets */}
-        <div className="flex gap-1 -mb-px">
-          <TabButton
-            active={activeTab === 'analysis'}
-            onClick={() => setActiveTab('analysis')}
-            label="📋 Analyse & US"
-            badge={analysisState === 'done' ? (analysis ? `${analysis.scoreGlobal}/100` : undefined) : undefined}
-            badgeColor={analysis && analysis.scoreGlobal >= 70 ? 'green' : analysis && analysis.scoreGlobal >= 40 ? 'yellow' : 'red'}
-          />
-          <TabButton
-            active={activeTab === 'manual-tests'}
-            onClick={() => setActiveTab('manual-tests')}
-            label="📋 Tests manuels"
-            badge={manualTestSet ? `${manualTestSet.testCases.length}` : undefined}
-            badgeColor={manualTestSet?.status === 'validated' || manualTestSet?.status === 'pushed' ? 'green' : 'blue'}
-            disabled={analysisState !== 'done'}
-          />
-          <TabButton
-            active={activeTab === 'generation'}
-            onClick={() => setActiveTab('generation')}
-            label="⚙️ Génération de tests"
-            badge={generationState === 'done' ? '✓' : generationState === 'loading' ? '...' : undefined}
-            badgeColor="blue"
-            disabled={analysisState !== 'done'}
-          />
-        </div>
+        {/* Onglets — shadcn Tabs avec style underline */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
+          <TabsList className="flex gap-1 -mb-px bg-transparent p-0 h-auto rounded-none">
+            <TabsTrigger
+              value="analysis"
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:border-gray-300 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              📋 Analyse &amp; US
+              {analysisState === 'done' && analysis && (
+                <Badge
+                  variant="secondary"
+                  className={`text-xs px-1.5 py-0.5 font-medium ${
+                    analysis.scoreGlobal >= 70 ? 'bg-green-100 text-green-700' :
+                    analysis.scoreGlobal >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}
+                >
+                  {analysis.scoreGlobal}/100
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="manual-tests"
+              disabled={analysisState !== 'done'}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:border-gray-300 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              📋 Tests manuels
+              {manualTestSet && (
+                <Badge
+                  variant="secondary"
+                  className={`text-xs px-1.5 py-0.5 font-medium ${
+                    manualTestSet.status === 'validated' || manualTestSet.status === 'pushed'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {manualTestSet.testCases.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="generation"
+              disabled={analysisState !== 'done'}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 rounded-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:border-gray-300 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              ⚙️ Génération de tests
+              {(generationState === 'done' || generationState === 'loading') && (
+                <Badge variant="secondary" className="text-xs px-1.5 py-0.5 font-medium bg-blue-100 text-blue-700">
+                  {generationState === 'done' ? '✓' : '...'}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* ── Contenu des onglets ── */}
@@ -255,92 +291,114 @@ export function StoryDetailPage() {
                 </div>
               )}
 
-              <Card title="Description">
-                {activeVersion === 'diff' && analysis?.improvedVersion ? (
-                  <DiffViewer
-                    original={story.description ?? ''}
-                    improved={analysis.improvedVersion}
-                  />
-                ) : (
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                    {displayText || <span className="italic text-gray-400">Aucune description</span>}
-                  </p>
-                )}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Description</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {activeVersion === 'diff' && analysis?.improvedVersion ? (
+                    <DiffViewer
+                      original={story.description ?? ''}
+                      improved={analysis.improvedVersion}
+                    />
+                  ) : (
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                      {displayText || <span className="italic text-gray-400">Aucune description</span>}
+                    </p>
+                  )}
+                </CardContent>
               </Card>
 
               {story.acceptanceCriteria && (
-                <Card title="Critères d'acceptance">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{story.acceptanceCriteria}</p>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Critères d'acceptance</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{story.acceptanceCriteria}</p>
+                  </CardContent>
                 </Card>
               )}
 
               {analysisState === 'done' && analysis?.improvedVersion && (
-                <Card title="✨ Version améliorée suggérée">
-                  <ImprovedVersion
-                    original={story.description}
-                    improved={analysis.improvedVersion}
-                    onUse={(text) => {
-                      setActiveVersion('improved');
-                      setAnalysis((a) => a ? { ...a, improvedVersion: text } : a);
-                    }}
-                  />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>✨ Version améliorée suggérée</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ImprovedVersion
+                      original={story.description}
+                      improved={analysis.improvedVersion}
+                      onUse={(text) => {
+                        setActiveVersion('improved');
+                        setAnalysis((a) => a ? { ...a, improvedVersion: text } : a);
+                      }}
+                    />
+                  </CardContent>
                 </Card>
               )}
             </div>
 
             {/* Droite : Analyse + Suggestions */}
             <div className="col-span-2 space-y-4">
-              <Card title="Analyse qualité">
-                {isStale && (
-                  <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-xs text-yellow-700">
-                    ⚠️ L'US a été mise à jour. Relancez l'analyse.
-                  </div>
-                )}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Analyse qualité</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isStale && (
+                    <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-xs text-yellow-700">
+                      ⚠️ L'US a été mise à jour. Relancez l'analyse.
+                    </div>
+                  )}
 
-                {analysisState === 'idle' && (
-                  <button onClick={() => void handleAnalyze()}
-                    className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
-                    Analyser cette US
-                  </button>
-                )}
-                {analysisState === 'loading' && (
-                  <div className="text-center py-6">
-                    <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
-                    <p className="text-xs text-gray-400">Analyse en cours...</p>
-                    <p className="text-xs text-gray-300">~8 secondes</p>
-                  </div>
-                )}
-                {analysisState === 'error' && (
-                  <div>
-                    <p className="text-xs text-red-600 mb-2">{analysisError}</p>
-                    <button onClick={() => void handleAnalyze()}
-                      className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-                      Réessayer
-                    </button>
-                  </div>
-                )}
-                {analysisState === 'done' && analysis && (
-                  <div className="space-y-3">
-                    <AnalysisScore
-                      scoreGlobal={analysis.scoreGlobal}
-                      scoreClarity={analysis.scoreClarity}
-                      scoreCompleteness={analysis.scoreCompleteness}
-                      scoreTestability={analysis.scoreTestability}
-                      scoreEdgeCases={analysis.scoreEdgeCases}
-                      scoreAcceptanceCriteria={analysis.scoreAcceptanceCriteria}
-                    />
-                    <button onClick={() => void handleAnalyze()}
-                      className="w-full py-1.5 text-xs border border-gray-200 rounded-md text-gray-400 hover:bg-gray-50">
-                      Relancer l'analyse
-                    </button>
-                    <p className="text-xs text-gray-300 text-center">{analysis.llmProvider} · {analysis.llmModel}</p>
-                  </div>
-                )}
+                  {analysisState === 'idle' && (
+                    <Button className="w-full" onClick={() => void handleAnalyze()}>
+                      Analyser cette US
+                    </Button>
+                  )}
+                  {analysisState === 'loading' && (
+                    <div className="text-center py-6">
+                      <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
+                      <p className="text-xs text-gray-400">Analyse en cours...</p>
+                      <p className="text-xs text-gray-300">~8 secondes</p>
+                    </div>
+                  )}
+                  {analysisState === 'error' && (
+                    <div>
+                      <p className="text-xs text-red-600 mb-2">{analysisError}</p>
+                      <Button className="w-full" onClick={() => void handleAnalyze()}>
+                        Réessayer
+                      </Button>
+                    </div>
+                  )}
+                  {analysisState === 'done' && analysis && (
+                    <div className="space-y-3">
+                      <AnalysisScore
+                        scoreGlobal={analysis.scoreGlobal}
+                        scoreClarity={analysis.scoreClarity}
+                        scoreCompleteness={analysis.scoreCompleteness}
+                        scoreTestability={analysis.scoreTestability}
+                        scoreEdgeCases={analysis.scoreEdgeCases}
+                        scoreAcceptanceCriteria={analysis.scoreAcceptanceCriteria}
+                      />
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => void handleAnalyze()}>
+                        Relancer l'analyse
+                      </Button>
+                      <p className="text-xs text-gray-300 text-center">{analysis.llmProvider} · {analysis.llmModel}</p>
+                    </div>
+                  )}
+                </CardContent>
               </Card>
 
               {analysisState === 'done' && analysis && (
-                <Card title={`Suggestions (${analysis.suggestions.length})`}>
-                  <SuggestionsList suggestions={analysis.suggestions} />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Suggestions ({analysis.suggestions.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <SuggestionsList suggestions={analysis.suggestions} />
+                  </CardContent>
                 </Card>
               )}
 
@@ -353,12 +411,13 @@ export function StoryDetailPage() {
               )}
 
               {analysisState === 'done' && (
-                <button
+                <Button
+                  variant="success"
+                  className="w-full"
                   onClick={() => setActiveTab('generation')}
-                  className="w-full py-2.5 bg-green-600 text-white text-sm font-medium rounded-xl hover:bg-green-700 transition-colors shadow-sm"
                 >
                   Générer les tests →
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -438,18 +497,21 @@ export function StoryDetailPage() {
                   <div className="bg-orange-50 border border-orange-200 rounded-md p-2 space-y-2">
                     <p className="text-xs text-orange-700 font-medium">⚠️ L'US a été modifiée depuis la dernière génération</p>
                     <div className="flex gap-2">
-                      <button
+                      <Button
+                        size="xs"
+                        className="bg-orange-600 hover:bg-orange-700"
                         onClick={() => void handleGenerate(false, true)}
-                        className="text-xs bg-orange-600 text-white px-2.5 py-1 rounded hover:bg-orange-700"
                       >
                         ↻ Mettre à jour les tests
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="text-orange-500 hover:text-orange-700"
                         onClick={() => setChangeStatus(null)}
-                        className="text-xs text-orange-500 hover:text-orange-700"
                       >
                         Ignorer
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -469,15 +531,13 @@ export function StoryDetailPage() {
                 <div className="space-y-2 pt-1">
                   {generationState === 'idle' && (
                     <>
-                      <button onClick={() => void handleGenerate(false)}
-                        className="w-full py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                      <Button variant="success" className="w-full" onClick={() => void handleGenerate(false)}>
                         Générer (US originale)
-                      </button>
+                      </Button>
                       {analysis?.improvedVersion && (
-                        <button onClick={() => void handleGenerate(true)}
-                          className="w-full py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                        <Button className="w-full" onClick={() => void handleGenerate(true)}>
                           ✨ Générer (version améliorée)
-                        </button>
+                        </Button>
                       )}
                     </>
                   )}
@@ -493,20 +553,18 @@ export function StoryDetailPage() {
                   {generationState === 'error' && (
                     <div>
                       <p className="text-xs text-red-600 bg-red-50 p-2 rounded mb-2">{generationError}</p>
-                      <button onClick={() => setGenerationState('idle')}
-                        className="w-full py-2 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => setGenerationState('idle')}>
                         Réessayer
-                      </button>
+                      </Button>
                     </div>
                   )}
 
                   {generationState === 'done' && generation && (
                     <div className="text-center pt-1">
                       <p className="text-xs text-green-600 mb-2">✓ {generation.files.length} fichiers générés</p>
-                      <button onClick={() => setGenerationState('idle')}
-                        className="w-full py-2 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => setGenerationState('idle')}>
                         Regénérer
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -517,13 +575,16 @@ export function StoryDetailPage() {
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-semibold text-gray-700">US analysée</h2>
                   {analysis && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      analysis.scoreGlobal >= 70 ? 'bg-green-100 text-green-700' :
-                      analysis.scoreGlobal >= 40 ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
+                    <Badge
+                      variant="secondary"
+                      className={`text-xs font-medium ${
+                        analysis.scoreGlobal >= 70 ? 'bg-green-100 text-green-700' :
+                        analysis.scoreGlobal >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}
+                    >
                       {analysis.scoreGlobal}/100
-                    </span>
+                    </Badge>
                   )}
                 </div>
                 <p className="text-sm font-medium text-gray-800 mb-2">{story.title}</p>
@@ -565,12 +626,13 @@ export function StoryDetailPage() {
               <div className="space-y-3">
                 {/* Boutons d'action V2 + Preview (Feature 011) */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
+                  <Button
+                    variant={showPreview ? 'secondary' : 'outline'}
+                    size="sm"
                     onClick={() => setShowPreview(!showPreview)}
-                    className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${showPreview ? 'bg-indigo-50 text-indigo-700 border-indigo-300' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
                   >
                     {showPreview ? '🔍 Masquer la preview' : '🔍 Prévisualiser'}
-                  </button>
+                  </Button>
                   <GitPushButton generationId={generation.id} />
                   <XrayTestButton generationId={generation.id} />
                   <ADOTestCaseButton generationId={generation.id} />
@@ -635,49 +697,6 @@ export function StoryDetailPage() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-// ─── Composants locaux ────────────────────────────────────────────────────────
-
-function TabButton({ active, onClick, label, badge, badgeColor = 'blue', disabled }: {
-  active: boolean; onClick: () => void; label: string;
-  badge?: string; badgeColor?: 'green' | 'yellow' | 'red' | 'blue';
-  disabled?: boolean;
-}) {
-  const badgeClasses: Record<string, string> = {
-    green:  'bg-green-100 text-green-700',
-    yellow: 'bg-yellow-100 text-yellow-700',
-    red:    'bg-red-100 text-red-700',
-    blue:   'bg-blue-100 text-blue-700',
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-        active
-          ? 'border-blue-600 text-blue-600'
-          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-      }`}
-    >
-      {label}
-      {badge && (
-        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${badgeClasses[badgeColor]}`}>
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">{title}</h2>
-      {children}
     </div>
   );
 }
