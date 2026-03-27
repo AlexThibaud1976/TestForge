@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { analyses } from '../db/schema.js';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js';
@@ -59,6 +59,8 @@ router.post('/batch', requireAuth, async (req: Request, res) => {
 });
 
 // POST /api/analyses  { userStoryId }
+// Cache hit → 201 + résultat complet
+// Cache miss → 202 + { id, status: 'pending' } — traitement async fire-and-forget
 router.post('/', requireAuth, async (req: Request, res) => {
   const { teamId } = req as AuthenticatedRequest;
   const parsed = z.object({ userStoryId: z.string().uuid() }).safeParse(req.body);
@@ -68,9 +70,23 @@ router.post('/', requireAuth, async (req: Request, res) => {
     return;
   }
 
+  const { userStoryId } = parsed.data;
+
   try {
-    const result = await analysisService.analyze(parsed.data.userStoryId, teamId);
-    res.status(201).json(result);
+    // Vérifier le cache d'abord
+    const cached = await analysisService.analyzeWithCache(userStoryId, teamId);
+    if (cached) {
+      res.status(201).json(cached);
+      return;
+    }
+
+    // Créer l'enregistrement pending
+    const pending = await analysisService.createPending(userStoryId, teamId);
+
+    // Fire-and-forget — Supabase Realtime notifie le frontend
+    void analysisService.processAnalysis(pending.id, userStoryId, teamId);
+
+    res.status(202).json(pending);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Analysis failed';
     const status = message.includes('not found') ? 404 : 500;
@@ -110,6 +126,7 @@ router.get('/', requireAuth, async (req: Request, res) => {
     where: and(
       eq(analyses.userStoryId, userStoryId),
       eq(analyses.teamId, teamId),
+      ne(analyses.status, 'pending'),
     ),
     orderBy: (a, { desc }) => [desc(a.createdAt)],
   });

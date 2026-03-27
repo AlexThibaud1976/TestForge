@@ -150,20 +150,24 @@ export const analyses = pgTable('analyses', {
   id: uuid('id').primaryKey().defaultRandom(),
   userStoryId: uuid('user_story_id').references(() => userStories.id),
   teamId: uuid('team_id').references(() => teams.id),
-  scoreGlobal: smallint('score_global').notNull(),
-  scoreClarity: smallint('score_clarity').notNull(),
-  scoreCompleteness: smallint('score_completeness').notNull(),
-  scoreTestability: smallint('score_testability').notNull(),
-  scoreEdgeCases: smallint('score_edge_cases').notNull(),
-  scoreAcceptanceCriteria: smallint('score_acceptance_criteria').notNull(),
+  // Feature 021: progress tracking
+  status: text('status').notNull().default('success'), // 'pending' | 'success' | 'error'
+  progressStep: text('progress_step'),                 // 'preparing' | 'calling_llm' | 'finalizing' | null
+  durationMs: integer('duration_ms'),
+  scoreGlobal: smallint('score_global').notNull().default(0),
+  scoreClarity: smallint('score_clarity').notNull().default(0),
+  scoreCompleteness: smallint('score_completeness').notNull().default(0),
+  scoreTestability: smallint('score_testability').notNull().default(0),
+  scoreEdgeCases: smallint('score_edge_cases').notNull().default(0),
+  scoreAcceptanceCriteria: smallint('score_acceptance_criteria').notNull().default(0),
   suggestions: jsonb('suggestions').notNull().default([]),
   improvedVersion: text('improved_version'),             // rétrocompat — texte complet
   // Fix 012: champs séparés pour description et AC améliorés
   improvedDescription: text('improved_description'),
   improvedAcceptanceCriteria: text('improved_acceptance_criteria'),
-  llmProvider: text('llm_provider').notNull(),
-  llmModel: text('llm_model').notNull(),
-  promptVersion: text('prompt_version').notNull(),
+  llmProvider: text('llm_provider').notNull().default(''),
+  llmModel: text('llm_model').notNull().default(''),
+  promptVersion: text('prompt_version').notNull().default(''),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -186,6 +190,7 @@ export const generations = pgTable('generations', {
   llmModel: text('llm_model').notNull(),
   promptVersion: text('prompt_version').notNull(),
   status: text('status').notNull().default('pending'), // 'pending' | 'success' | 'error'
+  progressStep: text('progress_step'),                 // 'preparing' | 'calling_llm' | 'finalizing' | null — Feature 021
   errorMessage: text('error_message'),
   durationMs: integer('duration_ms'),
   manualTestSetId: uuid('manual_test_set_id'), // Feature 002: lien optionnel vers le lot de tests manuels

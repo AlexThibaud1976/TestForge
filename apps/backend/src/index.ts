@@ -34,6 +34,7 @@ import userStoriesRouter from './routes/userStories.js';
 import analysesRouter from './routes/analyses.js';
 import llmConfigsRouter from './routes/llmConfigs.js';
 import generationsRouter from './routes/generations.js';
+import estimatesRouter from './routes/estimates.js';
 app.use('/api/auth', authRouter);
 app.use('/api/teams', teamsRouter);
 app.use('/api/connections', connectionsRouter);
@@ -41,6 +42,7 @@ app.use('/api/user-stories', userStoriesRouter);
 app.use('/api/analyses', analysesRouter);
 app.use('/api/llm-configs', llmConfigsRouter);
 app.use('/api/generations', generationsRouter);
+app.use('/api/estimates', estimatesRouter);
 app.use('/api/billing', billingRouter);
 
 // V2 routes — chargées dynamiquement pour isoler les erreurs d'import

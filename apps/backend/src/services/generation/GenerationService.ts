@@ -112,6 +112,9 @@ export class GenerationService {
     const startTime = Date.now();
 
     try {
+      // Étape 1 : Préparation
+      await db.update(generations).set({ progressStep: 'preparing' }).where(eq(generations.id, generationId));
+
       const analysis = await db.query.analyses.findFirst({
         where: and(eq(analyses.id, analysisId), eq(analyses.teamId, teamId)),
       });
@@ -160,6 +163,9 @@ export class GenerationService {
         manualTestsSection,
       ].filter(Boolean).join('\n\n');
 
+      // Étape 2 : Appel LLM
+      await db.update(generations).set({ progressStep: 'calling_llm' }).where(eq(generations.id, generationId));
+
       const response = await client.complete(
         [
           { role: 'system', content: finalSystemPrompt },
@@ -176,6 +182,9 @@ export class GenerationService {
         ],
         { temperature: 0.2, jsonMode: true, maxTokens: 16000 },
       );
+
+      // Étape 3 : Finalisation (parsing + validation)
+      await db.update(generations).set({ progressStep: 'finalizing' }).where(eq(generations.id, generationId));
 
       const parsedFiles = this.parseFiles(response.content);
 
@@ -215,6 +224,7 @@ export class GenerationService {
         .update(generations)
         .set({
           status: 'success',
+          progressStep: null,
           durationMs: Date.now() - startTime,
           validationStatus,
           validationErrors: validationResult.errors,
@@ -226,7 +236,7 @@ export class GenerationService {
       const message = err instanceof Error ? err.message : 'Generation failed';
       await db
         .update(generations)
-        .set({ status: 'error', errorMessage: message, durationMs: Date.now() - startTime })
+        .set({ status: 'error', progressStep: null, errorMessage: message, durationMs: Date.now() - startTime })
         .where(eq(generations.id, generationId));
     }
   }

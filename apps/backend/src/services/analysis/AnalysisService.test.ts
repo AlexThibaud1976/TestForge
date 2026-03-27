@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnalysisService } from './AnalysisService.js';
 
-// Mock DB
+// Hoisted pour éviter le problème de TDZ avec vi.mock
+const { mockUpdate } = vi.hoisted(() => {
+  const mockUpdateWhere = vi.fn().mockResolvedValue(undefined);
+  const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
+  const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
+  return { mockUpdate };
+});
+
 vi.mock('../../db/index.js', () => ({
   db: {
     query: {
@@ -10,6 +17,7 @@ vi.mock('../../db/index.js', () => ({
       llmConfigs: { findFirst: vi.fn() },
     },
     insert: vi.fn(() => ({ values: vi.fn(() => ({ returning: vi.fn() })) })),
+    update: mockUpdate,
   },
 }));
 
@@ -83,19 +91,25 @@ describe('AnalysisService', () => {
     });
   });
 
+  const fullAnalysisRow = { id: 'new-1', userStoryId: 'story-1', teamId: 'team-1', status: 'success', progressStep: null, durationMs: 1000, scoreGlobal: 72, scoreClarity: 75, scoreCompleteness: 80, scoreTestability: 70, scoreEdgeCases: 55, scoreAcceptanceCriteria: 78, suggestions: [], improvedVersion: 'Version améliorée...', improvedDescription: null, improvedAcceptanceCriteria: null, llmProvider: 'openai', llmModel: 'gpt-4o', promptVersion: 'v1.0', createdAt: new Date() };
+
   describe('analyze — cache miss', () => {
     beforeEach(() => {
+      // analyses.findFirst: null (cache check) puis résultat complet (getById)
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      mockDb.query.analyses.findFirst.mockResolvedValue(null);
+      mockDb.query.analyses.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(fullAnalysisRow);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      mockDb.query.userStories.findFirst.mockResolvedValue(mockStory);
+      mockDb.query.userStories.findFirst.mockResolvedValue({ ...mockStory, fetchedAt: new Date(0) });
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       mockDb.query.llmConfigs.findFirst.mockResolvedValue(mockLLMConfig);
 
       const mockComplete = vi.fn().mockResolvedValue({ content: validLLMResponse, model: 'gpt-4o', promptTokens: 100, completionTokens: 200 });
       mockCreateLLMClient.mockReturnValue({ complete: mockComplete });
 
-      const mockReturning = vi.fn().mockResolvedValue([{ id: 'new-1', userStoryId: 'story-1', teamId: 'team-1', scoreGlobal: 72, scoreClarity: 75, scoreCompleteness: 80, scoreTestability: 70, scoreEdgeCases: 55, scoreAcceptanceCriteria: 78, suggestions: [], improvedVersion: 'Version améliorée...', llmProvider: 'openai', llmModel: 'gpt-4o', promptVersion: 'v1.0', createdAt: new Date() }]);
+      // createPending: insert → returning [{ id: 'new-1', status: 'pending' }]
+      const mockReturning = vi.fn().mockResolvedValue([{ id: 'new-1', status: 'pending' }]);
       const mockValues = vi.fn().mockReturnValue({ returning: mockReturning });
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       mockDb.insert.mockReturnValue({ values: mockValues });
@@ -123,12 +137,15 @@ describe('AnalysisService', () => {
   describe('parseResponse (via analyze)', () => {
     beforeEach(() => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      mockDb.query.analyses.findFirst.mockResolvedValue(null);
+      mockDb.query.analyses.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(fullAnalysisRow);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      mockDb.query.userStories.findFirst.mockResolvedValue(mockStory);
+      mockDb.query.userStories.findFirst.mockResolvedValue({ ...mockStory, fetchedAt: new Date(0) });
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       mockDb.query.llmConfigs.findFirst.mockResolvedValue(mockLLMConfig);
-      const mockReturning = vi.fn().mockResolvedValue([{ id: 'x', userStoryId: 'story-1', teamId: 'team-1', scoreGlobal: 0, scoreClarity: 0, scoreCompleteness: 0, scoreTestability: 0, scoreEdgeCases: 0, scoreAcceptanceCriteria: 0, suggestions: [], improvedVersion: null, llmProvider: 'openai', llmModel: 'gpt-4o', promptVersion: 'v1.0', createdAt: new Date() }]);
+      // createPending
+      const mockReturning = vi.fn().mockResolvedValue([{ id: 'x', status: 'pending' }]);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       mockDb.insert.mockReturnValue({ values: vi.fn().mockReturnValue({ returning: mockReturning }) });
     });

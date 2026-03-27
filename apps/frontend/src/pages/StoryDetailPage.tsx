@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { AnalysisScore } from '../components/analysis/AnalysisScore.js';
@@ -19,6 +19,7 @@ import { ManualTestGenerateButton } from '../components/ManualTestGenerateButton
 import { ManualTestValidateButton } from '../components/ManualTestValidateButton.js';
 import { ManualTestPushButton } from '../components/ManualTestPushButton.js';
 import { DiffViewer } from '../components/diff/DiffViewer.js';
+import { ProgressTracker, ANALYSIS_STEPS, GENERATION_STEPS } from '../components/progress/ProgressTracker.js';
 import { Button } from '@/components/ui/button.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card.js';
@@ -66,10 +67,20 @@ export function StoryDetailPage() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [activeVersion, setActiveVersion] = useState<'original' | 'improved' | 'diff'>('original');
 
+  // Analyse async
+  const [pendingAnalysisId, setPendingAnalysisId] = useState<string | null>(null);
+  const [analysisCurrentStep, setAnalysisCurrentStep] = useState<string | null>(null);
+  const [analysisStartedAt, setAnalysisStartedAt] = useState<number>(Date.now());
+  const [analysisEstimatedMs, setAnalysisEstimatedMs] = useState<number>(15000);
+  const analysisTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [generationState, setGenerationState] = useState<GenerationState>('idle');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [pendingGenerationId, setPendingGenerationId] = useState<string | null>(null);
+  const [generationCurrentStep, setGenerationCurrentStep] = useState<string | null>(null);
+  const [generationStartedAt, setGenerationStartedAt] = useState<number>(Date.now());
+  const [generationEstimatedMs, setGenerationEstimatedMs] = useState<number>(25000);
   const [framework, setFramework] = useState<'playwright' | 'selenium' | 'cypress'>('playwright');
   const [language, setLanguage] = useState<'typescript' | 'javascript' | 'python' | 'java' | 'csharp' | 'ruby' | 'kotlin'>('typescript');
   const [linkManualTests, setLinkManualTests] = useState(true);
@@ -104,37 +115,100 @@ export function StoryDetailPage() {
     }).finally(() => setLoading(false));
   }, [id]);
 
-  // Realtime : quand la génération est prête, passer automatiquement sur l'onglet génération
-  useRealtimeRow<{ id: string; status: string }>('generations', pendingGenerationId, async (row) => {
-    if (row.status === 'success') {
-      const full = await api.get<Generation>(`/api/generations/${row.id}`);
-      setGeneration(full);
-      setGenerationState('done');
-      setPendingGenerationId(null);
-      setActiveTab('generation');
-      // Feature 008: vérifier si l'US a changé depuis cette génération
-      if (story?.id) {
-        api.get<{ changed: boolean; generationId: string | null }>(`/api/user-stories/${story.id}/change-status`)
-          .then(setChangeStatus)
-          .catch(() => null);
+  // Realtime analyses : progress_step + status
+  useRealtimeRow<{ id: string; status: string; progress_step: string | null }>(
+    'analyses',
+    pendingAnalysisId,
+    async (row) => {
+      if (row.progress_step) setAnalysisCurrentStep(row.progress_step);
+      if (row.status === 'success') {
+        if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current);
+        const full = await api.get<Analysis>(`/api/analyses/${row.id}`);
+        setAnalysis(full);
+        setAnalysisState('done');
+        setPendingAnalysisId(null);
+        setAnalysisCurrentStep(null);
+        localStorage.setItem('testforge_first_analysis', 'true');
+        window.dispatchEvent(new Event('testforge_analysis_done'));
+      } else if (row.status === 'error') {
+        if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current);
+        setAnalysisError('Erreur lors de l\'analyse. Réessayez.');
+        setAnalysisState('error');
+        setPendingAnalysisId(null);
+        setAnalysisCurrentStep(null);
       }
-    } else if (row.status === 'error') {
-      setGenerationError('Erreur lors de la génération. Réessayez.');
-      setGenerationState('error');
-      setPendingGenerationId(null);
-    }
-  });
+    },
+  );
+
+  // Realtime : quand la génération est prête, passer automatiquement sur l'onglet génération
+  useRealtimeRow<{ id: string; status: string; progress_step: string | null }>(
+    'generations',
+    pendingGenerationId,
+    async (row) => {
+      if (row.progress_step) setGenerationCurrentStep(row.progress_step);
+      if (row.status === 'success') {
+        const full = await api.get<Generation>(`/api/generations/${row.id}`);
+        setGeneration(full);
+        setGenerationState('done');
+        setPendingGenerationId(null);
+        setGenerationCurrentStep(null);
+        setActiveTab('generation');
+        // Feature 008: vérifier si l'US a changé depuis cette génération
+        if (story?.id) {
+          api.get<{ changed: boolean; generationId: string | null }>(`/api/user-stories/${story.id}/change-status`)
+            .then(setChangeStatus)
+            .catch(() => null);
+        }
+      } else if (row.status === 'error') {
+        setGenerationError('Erreur lors de la génération. Réessayez.');
+        setGenerationState('error');
+        setPendingGenerationId(null);
+        setGenerationCurrentStep(null);
+      }
+    },
+  );
 
   const handleAnalyze = async () => {
     if (!story) return;
     setAnalysisState('loading');
     setAnalysisError(null);
+    setAnalysisCurrentStep(null);
+    if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current);
+
     try {
-      const result = await api.post<Analysis>('/api/analyses', { userStoryId: story.id });
-      setAnalysis(result);
-      setAnalysisState('done');
-      localStorage.setItem('testforge_first_analysis', 'true');
-      window.dispatchEvent(new Event('testforge_analysis_done'));
+      // Récupérer l'estimation de durée
+      const estimate = await api.get<{ estimatedMs: number }>('/api/estimates?type=analysis').catch(() => ({ estimatedMs: 15000 }));
+      setAnalysisEstimatedMs(estimate.estimatedMs);
+
+      const now = Date.now();
+      setAnalysisStartedAt(now);
+
+      const response = await api.post<{ id: string; status: string } | Analysis>(
+        '/api/analyses',
+        { userStoryId: story.id },
+      );
+
+      // 201 → cache hit, résultat direct
+      if ('scoreGlobal' in response) {
+        setAnalysis(response as Analysis);
+        setAnalysisState('done');
+        localStorage.setItem('testforge_first_analysis', 'true');
+        window.dispatchEvent(new Event('testforge_analysis_done'));
+        return;
+      }
+
+      // 202 → async, attendre Realtime
+      const pending = response as { id: string; status: string };
+      setPendingAnalysisId(pending.id);
+
+      // Timeout 90s
+      analysisTimeoutRef.current = setTimeout(() => {
+        setAnalysisError('L\'analyse prend trop de temps. Vérifiez votre connexion et réessayez.');
+        setAnalysisState('error');
+        setPendingAnalysisId(null);
+        setAnalysisCurrentStep(null);
+      }, 90000);
+
     } catch (e) {
       setAnalysisError(e instanceof Error ? e.message : 'Erreur lors de l\'analyse');
       setAnalysisState('error');
@@ -145,8 +219,14 @@ export function StoryDetailPage() {
     if (!analysis) return;
     setGenerationState('loading');
     setGenerationError(null);
+    setGenerationCurrentStep(null);
     setShowIncrementalDialog(false);
     try {
+      // Récupérer l'estimation de durée
+      const estimate = await api.get<{ estimatedMs: number }>('/api/estimates?type=generation').catch(() => ({ estimatedMs: 25000 }));
+      setGenerationEstimatedMs(estimate.estimatedMs);
+      setGenerationStartedAt(Date.now());
+
       const pending = await api.post<{ id: string; status: string }>('/api/generations', {
         analysisId: analysis.id,
         useImprovedVersion: useImproved,
@@ -358,11 +438,13 @@ export function StoryDetailPage() {
                     </Button>
                   )}
                   {analysisState === 'loading' && (
-                    <div className="text-center py-6">
-                      <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
-                      <p className="text-xs text-gray-400">Analyse en cours...</p>
-                      <p className="text-xs text-gray-300">~8 secondes</p>
-                    </div>
+                    <ProgressTracker
+                      steps={ANALYSIS_STEPS}
+                      currentStep={analysisCurrentStep}
+                      status={pendingAnalysisId ? 'processing' : 'pending'}
+                      estimatedMs={analysisEstimatedMs}
+                      startedAt={analysisStartedAt}
+                    />
                   )}
                   {analysisState === 'error' && (
                     <div>
@@ -543,11 +625,13 @@ export function StoryDetailPage() {
                   )}
 
                   {generationState === 'loading' && (
-                    <div className="text-center py-5">
-                      <div className="inline-block w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin mb-2" />
-                      <p className="text-xs text-gray-400">Génération en cours...</p>
-                      <p className="text-xs text-gray-300">~25 secondes</p>
-                    </div>
+                    <ProgressTracker
+                      steps={GENERATION_STEPS}
+                      currentStep={generationCurrentStep}
+                      status={pendingGenerationId ? 'processing' : 'pending'}
+                      estimatedMs={generationEstimatedMs}
+                      startedAt={generationStartedAt}
+                    />
                   )}
 
                   {generationState === 'error' && (
