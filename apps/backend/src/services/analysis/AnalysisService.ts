@@ -106,7 +106,7 @@ export class AnalysisService {
     const response = await client.complete(messages, {
       temperature: 0.2,
       jsonMode: true,
-      maxTokens: 2000,
+      maxTokens: 4000,
     });
 
     // 5. Parser la réponse avec fallbacks robustes
