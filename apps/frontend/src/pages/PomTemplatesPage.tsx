@@ -17,6 +17,238 @@ interface PomTemplate {
 const FRAMEWORKS = ['playwright', 'selenium', 'cypress'];
 const LANGUAGES = ['typescript', 'javascript', 'python', 'java', 'csharp', 'ruby', 'kotlin'];
 
+const PLACEHOLDERS: Partial<Record<string, Partial<Record<string, string>>>> = {
+  playwright: {
+    typescript: `import { type Page, type Locator } from '@playwright/test';
+
+export class BasePage {
+  constructor(protected readonly page: Page) {}
+}
+
+export class LoginPage extends BasePage {
+  private readonly emailInput: Locator;
+  private readonly passwordInput: Locator;
+  private readonly submitButton: Locator;
+
+  constructor(page: Page) {
+    super(page);
+    this.emailInput = page.getByLabel('Email');
+    this.passwordInput = page.getByLabel('Password');
+    this.submitButton = page.getByRole('button', { name: 'Sign in' });
+  }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.submitButton.click();
+  }
+}`,
+    javascript: `const { expect } = require('@playwright/test');
+
+class BasePage {
+  constructor(page) {
+    this.page = page;
+  }
+}
+
+class LoginPage extends BasePage {
+  constructor(page) {
+    super(page);
+    this.emailInput = page.getByLabel('Email');
+    this.passwordInput = page.getByLabel('Password');
+    this.submitButton = page.getByRole('button', { name: 'Sign in' });
+  }
+
+  async login(email, password) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.submitButton.click();
+  }
+}
+
+module.exports = { LoginPage };`,
+  },
+  selenium: {
+    java: `import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.PageFactory;
+
+public class LoginPage {
+  private final WebDriver driver;
+
+  @FindBy(id = "email")
+  private WebElement emailInput;
+
+  @FindBy(id = "password")
+  private WebElement passwordInput;
+
+  @FindBy(css = "button[type='submit']")
+  private WebElement submitButton;
+
+  public LoginPage(WebDriver driver) {
+    this.driver = driver;
+    PageFactory.initElements(driver, this);
+  }
+
+  public void login(String email, String password) {
+    emailInput.sendKeys(email);
+    passwordInput.sendKeys(password);
+    submitButton.click();
+  }
+}`,
+    python: `from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+
+class BasePage:
+    def __init__(self, driver: WebDriver):
+        self.driver = driver
+
+class LoginPage(BasePage):
+    EMAIL_INPUT = (By.ID, "email")
+    PASSWORD_INPUT = (By.ID, "password")
+    SUBMIT_BUTTON = (By.CSS_SELECTOR, "button[type='submit']")
+
+    def login(self, email: str, password: str) -> None:
+        self.driver.find_element(*self.EMAIL_INPUT).send_keys(email)
+        self.driver.find_element(*self.PASSWORD_INPUT).send_keys(password)
+        self.driver.find_element(*self.SUBMIT_BUTTON).click()`,
+    csharp: `using OpenQA.Selenium;
+using OpenQA.Selenium.Support.PageObjects;
+
+public class LoginPage {
+  private readonly IWebDriver _driver;
+
+  [FindsBy(How = How.Id, Using = "email")]
+  private IWebElement EmailInput;
+
+  [FindsBy(How = How.Id, Using = "password")]
+  private IWebElement PasswordInput;
+
+  [FindsBy(How = How.CssSelector, Using = "button[type='submit']")]
+  private IWebElement SubmitButton;
+
+  public LoginPage(IWebDriver driver) {
+    _driver = driver;
+    PageFactory.InitElements(driver, this);
+  }
+
+  public void Login(string email, string password) {
+    EmailInput.SendKeys(email);
+    PasswordInput.SendKeys(password);
+    SubmitButton.Click();
+  }
+}`,
+    ruby: `require 'selenium-webdriver'
+
+class LoginPage
+  def initialize(driver)
+    @driver = driver
+  end
+
+  def email_input
+    @driver.find_element(id: 'email')
+  end
+
+  def password_input
+    @driver.find_element(id: 'password')
+  end
+
+  def submit_button
+    @driver.find_element(css: "button[type='submit']")
+  end
+
+  def login(email, password)
+    email_input.send_keys(email)
+    password_input.send_keys(password)
+    submit_button.click
+  end
+end`,
+    kotlin: `import org.openqa.selenium.WebDriver
+import org.openqa.selenium.support.FindBy
+import org.openqa.selenium.support.PageFactory
+import org.openqa.selenium.WebElement
+
+class LoginPage(private val driver: WebDriver) {
+
+  @FindBy(id = "email")
+  lateinit var emailInput: WebElement
+
+  @FindBy(id = "password")
+  lateinit var passwordInput: WebElement
+
+  @FindBy(css = "button[type='submit']")
+  lateinit var submitButton: WebElement
+
+  init {
+    PageFactory.initElements(driver, this)
+  }
+
+  fun login(email: String, password: String) {
+    emailInput.sendKeys(email)
+    passwordInput.sendKeys(password)
+    submitButton.click()
+  }
+}`,
+  },
+  cypress: {
+    typescript: `export class LoginPage {
+  visit() {
+    cy.visit('/login');
+  }
+
+  getEmailInput() {
+    return cy.get('[data-cy="email-input"]');
+  }
+
+  getPasswordInput() {
+    return cy.get('[data-cy="password-input"]');
+  }
+
+  getSubmitButton() {
+    return cy.get('[data-cy="submit-btn"]');
+  }
+
+  login(email: string, password: string) {
+    this.getEmailInput().type(email);
+    this.getPasswordInput().type(password);
+    this.getSubmitButton().click();
+  }
+}`,
+    javascript: `class LoginPage {
+  visit() {
+    cy.visit('/login');
+  }
+
+  getEmailInput() {
+    return cy.get('[data-cy="email-input"]');
+  }
+
+  getPasswordInput() {
+    return cy.get('[data-cy="password-input"]');
+  }
+
+  getSubmitButton() {
+    return cy.get('[data-cy="submit-btn"]');
+  }
+
+  login(email, password) {
+    this.getEmailInput().type(email);
+    this.getPasswordInput().type(password);
+    this.getSubmitButton().click();
+  }
+}
+
+module.exports = { LoginPage };`,
+  },
+};
+
+function getPlaceholder(framework: string, language: string): string {
+  return PLACEHOLDERS[framework]?.[language]
+    ?? `// Exemple de Page Object pour ${framework} / ${language}\n// Collez ici votre classe de base ou un exemple représentatif.`;
+}
+
 export function PomTemplatesPage() {
   const [templates, setTemplates] = useState<PomTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,7 +346,7 @@ export function PomTemplatesPage() {
               onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
               rows={12}
               className="w-full font-mono text-sm"
-              placeholder="import { type Page, type Locator } from '@playwright/test';\n\nexport class BasePage { ... }"
+              placeholder={getPlaceholder(form.framework, form.language)}
               required
             />
           </div>
