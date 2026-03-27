@@ -10,7 +10,7 @@ const SCORE_DIMENSIONS = [
   { label: 'Complétude', pct: 60, color: 'bg-blue-400' },
   { label: 'Testabilité', pct: 72, color: 'bg-cyan-500' },
   { label: 'Edge cases', pct: 45, color: 'bg-amber-400' },
-  { label: "Critères d'acceptance", pct: 90, color: 'bg-cyan-400' },
+  { label: "Critères d'acceptation", pct: 90, color: 'bg-cyan-400' },
 ];
 
 const SUGGESTIONS = [
@@ -57,7 +57,7 @@ const INTEGRATIONS = [
   {
     icon: '🧾',
     title: 'Xray (Jira)',
-    desc: "Créez des Tests Xray liés à votre US avec les critères d'acceptance transformés en Test Steps.",
+    desc: "Créez des Tests Xray liés à votre US avec les critères d'acceptation transformés en Test Steps.",
     badge: 'Plan Pro',
     badgeColor: 'bg-blue-50 text-blue-600 border-blue-100',
   },
@@ -203,7 +203,7 @@ export function LandingPage() {
                   <p className="text-sm font-semibold text-blue-800 mb-0.5">Version améliorée automatique</p>
                   <p className="text-xs text-blue-600 leading-relaxed">
                     Quel que soit le score, TestForge génère une version réécrite de l'US avec description complète
-                    et critères d'acceptance numérotés. Éditez-la et publiez-la dans Jira en un clic.
+                    et critères d'acceptation numérotés. Éditez-la et publiez-la dans Jira en un clic.
                   </p>
                 </div>
               </div>

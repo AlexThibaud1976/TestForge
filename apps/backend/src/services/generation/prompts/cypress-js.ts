@@ -40,6 +40,6 @@ export class FeatureNamePage {
 export const formatInstructions = `Génère exactement 3 fichiers : cypress/support/pages/xxx.page.js (POM), cypress/e2e/xxx.cy.js (spec), cypress/fixtures/xxx.json (données).`;
 
 export function buildUserPrompt(title: string, description: string, acceptanceCriteria: string | null, useImprovedVersion: boolean, improvedVersion: string | null): string {
-  const us = useImprovedVersion && improvedVersion ? improvedVersion : `**Titre :** ${title}\n\n**Description :**\n${description || '(aucune)'}\n\n**Critères d'acceptance :**\n${acceptanceCriteria || '(aucun)'}`;
+  const us = useImprovedVersion && improvedVersion ? improvedVersion : `**Titre :** ${title}\n\n**Description :**\n${description || '(aucune)'}\n\n**Critères d'acceptation :**\n${acceptanceCriteria || '(aucun)'}`;
   return `Génère les tests Cypress JavaScript pour :\n\n${us}\n\nGénère exactement 3 fichiers (page_object, test_spec, fixtures). JavaScript ES6+ valide.`;
 }

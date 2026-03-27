@@ -8,7 +8,7 @@ import type { AnalysisSuggestion } from '@testforge/shared-types';
 export const MANUAL_TEST_PROMPT_VERSION = 'v1.0';
 
 export const MANUAL_TEST_SYSTEM_PROMPT = `Tu es un expert QA senior spécialisé dans la rédaction de tests manuels structurés à partir de user stories agile.
-Ton rôle est de transformer les critères d'acceptance en cas de test manuels précis, exécutables et complets.
+Ton rôle est de transformer les critères d'acceptation en cas de test manuels précis, exécutables et complets.
 
 Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après.
 
@@ -42,7 +42,7 @@ Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans markdown, sans text
 ### Couverture obligatoire
 - Au moins 1 cas "happy_path" (le scénario nominal qui fonctionne)
 - Au moins 2 cas "error_case" ou "edge_case" (validation, erreurs, limites)
-- Chaque critère d'acceptance testable manuellement DOIT avoir au moins 1 cas de test
+- Chaque critère d'acceptation testable manuellement DOIT avoir au moins 1 cas de test
 
 ### Priorités
 - critical : fonctionnalité cœur, bloquant si KO
@@ -77,7 +77,7 @@ export function buildManualTestUserPrompt(
 ): string {
   const content = useImprovedVersion && improvedVersion
     ? improvedVersion
-    : `**Titre :** ${title}\n\n**Description :**\n${description || '(aucune description)'}\n\n**Critères d'acceptance :**\n${acceptanceCriteria || '(aucun critère d\'acceptance)'}`;
+    : `**Titre :** ${title}\n\n**Description :**\n${description || '(aucune description)'}\n\n**Critères d'acceptation :**\n${acceptanceCriteria || '(aucun critère d\'acceptation)'}`;
 
   const suggestionsText = analysisSuggestions.length > 0
     ? `\n\n**Suggestions de l'analyse qualité :**\n${analysisSuggestions.map((s) => `- [${s.priority}] ${s.issue} → ${s.suggestion}`).join('\n')}`

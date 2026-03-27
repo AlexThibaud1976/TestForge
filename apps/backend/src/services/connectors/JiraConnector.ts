@@ -210,7 +210,7 @@ export class JiraConnector {
           const existingDesc = (updateFields['description'] as { content: unknown[] }).content;
           (updateFields['description'] as { content: unknown[] }).content = [
             ...existingDesc,
-            { type: 'paragraph', content: [{ type: 'text', text: `\n\nCritères d'acceptance :\n${fields.acceptanceCriteria}` }] },
+            { type: 'paragraph', content: [{ type: 'text', text: `\n\nCritères d'acceptation :\n${fields.acceptanceCriteria}` }] },
           ];
         }
       }

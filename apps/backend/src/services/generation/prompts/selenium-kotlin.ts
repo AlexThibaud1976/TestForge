@@ -45,6 +45,6 @@ class FeatureNamePage(private val driver: WebDriver) : BasePage(driver) {
 export const formatInstructions = `Génère exactement 3 fichiers : pages/XxxPage.kt (POM), tests/XxxTest.kt (JUnit 5), fixtures/xxx.json (données).`;
 
 export function buildUserPrompt(title: string, description: string, acceptanceCriteria: string | null, useImprovedVersion: boolean, improvedVersion: string | null): string {
-  const us = useImprovedVersion && improvedVersion ? improvedVersion : `**Titre :** ${title}\n\n**Description :**\n${description || '(aucune)'}\n\n**Critères d'acceptance :**\n${acceptanceCriteria || '(aucun)'}`;
+  const us = useImprovedVersion && improvedVersion ? improvedVersion : `**Titre :** ${title}\n\n**Description :**\n${description || '(aucune)'}\n\n**Critères d'acceptation :**\n${acceptanceCriteria || '(aucun)'}`;
   return `Génère les tests Selenium Kotlin (JUnit 5) pour :\n\n${us}\n\nGénère exactement 3 fichiers (page_object, test_spec, fixtures). Kotlin idiomatique.`;
 }

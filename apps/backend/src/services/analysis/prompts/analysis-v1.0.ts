@@ -28,9 +28,9 @@ Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans markdown, sans text
       "suggestion": "<correction proposée>"
     }
   ],
-  "improvedVersion": "<texte complet de la US améliorée avec description + critères d'acceptance>",
-  "improvedDescription": "<description améliorée UNIQUEMENT — sans les critères d'acceptance>",
-  "improvedAcceptanceCriteria": "<critères d'acceptance améliorés UNIQUEMENT — liste avec puces>"
+  "improvedVersion": "<texte complet de la US améliorée avec description + critères d'acceptation>",
+  "improvedDescription": "<description améliorée UNIQUEMENT — sans les critères d'acceptation>",
+  "improvedAcceptanceCriteria": "<critères d'acceptation améliorés UNIQUEMENT — liste avec puces>"
 }
 
 ## Définition des dimensions
@@ -39,7 +39,7 @@ Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans markdown, sans text
 - **completeness** (0-100) : Contient-elle un acteur, une action et un bénéfice (format "En tant que... je veux... afin de...") ?
 - **testability** (0-100) : Peut-on écrire des tests automatisés précis à partir de cette US ? Les comportements attendus sont-ils vérifiables ?
 - **edgeCases** (0-100) : Les cas limites, erreurs et comportements exceptionnels sont-ils mentionnés ?
-- **acceptanceCriteria** (0-100) : Les critères d'acceptance sont-ils présents, précis et vérifiables ?
+- **acceptanceCriteria** (0-100) : Les critères d'acceptation sont-ils présents, précis et vérifiables ?
 
 ## Règles de scoring
 
@@ -52,7 +52,7 @@ Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans markdown, sans text
 
 - Toujours générer une version améliorée, même si le score est > 70
 - Conserver la langue de l'US originale (français si la US est en français)
-- Inclure : description complète + critères d'acceptance numérotés
+- Inclure : description complète + critères d'acceptation numérotés
 - Le code des tests doit être en anglais (convention standard), mais l'US elle-même peut rester en français
 - Si la US est trop courte (< 20 caractères), retourner un score max de 15 pour toutes les dimensions`;
 
@@ -64,7 +64,7 @@ export function buildAnalysisUserPrompt(title: string, description: string, acce
 **Description :**
 ${description || '(aucune description fournie)'}
 
-**Critères d'acceptance :**
+**Critères d'acceptation :**
 ${acceptanceCriteria || '(aucun critère d\'acceptance fourni)'}
 
 Réponds uniquement avec le JSON demandé.`;

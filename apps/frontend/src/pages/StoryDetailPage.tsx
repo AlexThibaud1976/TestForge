@@ -312,7 +312,7 @@ export function StoryDetailPage() {
               {story.acceptanceCriteria && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Critères d'acceptance</CardTitle>
+                    <CardTitle>Critères d'acceptation</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{story.acceptanceCriteria}</p>
@@ -429,7 +429,7 @@ export function StoryDetailPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-base font-semibold text-gray-800">Tests manuels</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Générés depuis les critères d'acceptance, éditables et pushables vers Xray ou ADO.</p>
+                <p className="text-sm text-gray-500 mt-0.5">Générés depuis les critères d'acceptation, éditables et pushables vers Xray ou ADO.</p>
               </div>
               {analysis && (
                 <ManualTestGenerateButton

@@ -350,7 +350,7 @@ const PAGES_CONTENT: Record<string, () => JSX.Element> = {
             { n: "Complétude", d: "Tous les cas d'usage sont-ils couverts ?" },
             { n: "Testabilité", d: "Peut-on écrire un test concret pour chaque AC ?" },
             { n: "Edge cases", d: "Les scénarios limites sont-ils identifiés ?" },
-            { n: "Critères d'acceptance", d: "Les AC sont-ils précis et mesurables ?" },
+            { n: "Critères d'acceptation", d: "Les AC sont-ils précis et mesurables ?" },
           ].map((d, i) => (
             <div key={i} style={{ padding: "12px 14px", background: "#f9fafb", borderRadius: "8px", border: "1px solid #f3f4f6" }}>
               <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "3px" }}>{d.n}</div>
@@ -406,7 +406,7 @@ const PAGES_CONTENT: Record<string, () => JSX.Element> = {
   "manual-tests": () => (
     <>
       <h1 style={h1Style}>Tests <span style={{ color: "#2563eb" }}>manuels</span></h1>
-      <p style={leadStyle}>Avant de générer du code, transformez vos critères d'acceptance en cas de test manuels structurés. C'est la porte de validation humaine — et c'est utile même sans automatisation.</p>
+      <p style={leadStyle}>Avant de générer du code, transformez vos critères d'acceptation en cas de test manuels structurés. C'est la porte de validation humaine — et c'est utile même sans automatisation.</p>
       <FadeIn><MockupManualTests /></FadeIn>
       <FadeIn delay={0.1}>
         <h2 style={h2Style}>Le flux en 4 temps</h2>

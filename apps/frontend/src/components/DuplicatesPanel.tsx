@@ -64,7 +64,7 @@ export function DuplicatesPanel({ pairs, onIgnored, onClose }: Props) {
                 )}
                 {story.acceptanceCriteria && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1">Critères d'acceptance</p>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Critères d'acceptation</p>
                     <p className="text-xs text-gray-700 whitespace-pre-wrap">{story.acceptanceCriteria}</p>
                   </div>
                 )}

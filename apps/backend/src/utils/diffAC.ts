@@ -1,5 +1,5 @@
 /**
- * Calcule le diff des critères d'acceptance entre deux versions d'une US.
+ * Calcule le diff des critères d'acceptation entre deux versions d'une US.
  */
 
 export interface ACDiff {
@@ -11,7 +11,7 @@ export interface ACDiff {
 }
 
 /**
- * Découpe un texte de critères d'acceptance en lignes significatives.
+ * Découpe un texte de critères d'acceptation en lignes significatives.
  */
 function parseACLines(text: string | null): string[] {
   if (!text) return [];
@@ -29,7 +29,7 @@ function normalize(line: string): string {
 }
 
 /**
- * Diff simple ligne à ligne des critères d'acceptance.
+ * Diff simple ligne à ligne des critères d'acceptation.
  * Retourne les lignes ajoutées, supprimées, modifiées, inchangées et le pourcentage de changement.
  */
 export function diffAcceptanceCriteria(oldAC: string | null, newAC: string | null): ACDiff {
